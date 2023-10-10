@@ -17,6 +17,21 @@ class BPTNode {
     ghost var Repr: set<BPTNode>
 
 
+    ghost predicate well()
+        reads *
+        requires length_ok()
+    {
+        sorted()&&
+        (is_leaf==false ==> (
+            child_nb() &&
+            child_height_eq() &&
+            hierarchy()
+        )) &&
+        (is_leaf==true ==> (
+            leaves_height_eq()
+        ))
+    }
+
     // ################ For all nodes ################
     // - min_keys : must contain at least floor(n/2) keys.
     
@@ -115,6 +130,7 @@ class BPTNode {
         ensures height==-1
         ensures is_leaf==true
         ensures empty()
+        ensures well()
         //ensures Valid() && Well() && fresh(Repr - {this})
         ensures Contents == {}
         ensures Repr == {this}
