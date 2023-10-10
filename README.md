@@ -19,6 +19,8 @@ For a tree of rank n
 
 #### For all nodes 
 - min_keys : must contain at least floor(n/2) keys.
+- sorted : keys are sorted from left two right
+
 #### For internal nodes
 - child_nb : contains one more child than it has keys. 
 - child_height_eq : all subtrees must be the same height. 
@@ -27,7 +29,6 @@ For a tree of rank n
 #### for leaves
 - leaves_height_eq : all leaves are at the same distance from the root (always -1).
 - linked_leaves : contains extra pointer towards the next leaf.
-- sorted : keys are sorted from left two right
 - all_keys_in_leaves : all keys appear in a leaf node.
 
 ## for root 
