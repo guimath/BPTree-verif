@@ -22,13 +22,11 @@ class BPTNode {
         requires length_ok()
     {
         sorted()&&
+        leaves_height_eq() && 
         (is_leaf==false ==> (
             child_nb() &&
             child_height_eq() &&
             hierarchy()
-        )) &&
-        (is_leaf==true ==> (
-            leaves_height_eq()
         ))
     }
 
@@ -44,7 +42,12 @@ class BPTNode {
             keys[i] < keys[i+1]
         )
     }
-
+    ghost predicate leaves_height_eq()
+        // all leaves are at the same distance from the root (always -1).
+        reads this
+    {
+        is_leaf <==> height==-1
+    }
 
     // ################ For internal nodes ################
     ghost predicate child_nb()
@@ -90,17 +93,12 @@ class BPTNode {
     }
 
     // ################ for leaves ################
-    ghost predicate leaves_height_eq()
-        // all leaves are at the same distance from the root (always -1).
-        reads this
-    {
-        is_leaf <==> height==-1
-    }
-
 
     // - linked_leaves : contains extra pointer towards the next leaf.
     // - all_keys_in_leaves : all keys appear in a leaf node.
 
+
+    // ################ generic ################
     ghost predicate length_ok()
         // the keys and children array are well formed
         reads this, children, keys

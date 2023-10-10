@@ -20,6 +20,7 @@ For a tree of rank n
 #### For all nodes 
 - min_keys : must contain at least floor(n/2) keys.
 - sorted : keys are sorted from left two right
+- leaves_height_eq : a node has a height value of -1 if and only if it is a leaf
 
 #### For internal nodes
 - child_nb : contains one more child than it has keys. 
@@ -27,7 +28,6 @@ For a tree of rank n
 - hierarchy : all keys in a given subtree is bounded by surrounding keys in parent node.
 
 #### for leaves
-- leaves_height_eq : all leaves are at the same distance from the root (always -1).
 - linked_leaves : contains extra pointer towards the next leaf.
 - all_keys_in_leaves : all keys appear in a leaf node.
 
