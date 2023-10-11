@@ -20,7 +20,7 @@ class BPTNode {
 
     ghost predicate well()
         reads *
-        decreases height + 1 
+        decreases height
     {
         height >= -1 && // bottom limit 
         length_ok() &&
@@ -31,8 +31,6 @@ class BPTNode {
             child_height_eq() &&
             hierarchy() &&
             (forall i: int :: 0 <= i < keynum ==> (
-                children[i] is BPTNode &&
-                children[i].height +1 == height &&
                 children[i].well()
             ))
         ))
@@ -61,17 +59,34 @@ class BPTNode {
     ghost predicate child_nb()
         // contains one more child than it has keys. 
         reads this, keys, children
+        requires is_leaf==false
         requires length_ok()
     {
-        is_leaf==false ==> (
-            (forall i: int :: 0 <= i < keynum ==> (
-                keys[i] > 0 && 
-                children[i] is BPTNode
-            )) &&
-            children[keynum] is BPTNode
-        )
+        // enough values
+        (forall i: int :: 0 <= i < keynum ==> (
+            keys[i] > 0 && 
+            children[i] is BPTNode
+        )) &&
+        children[keynum] is BPTNode &&
+        // no more values
+        (keynum < ORDER ==> keys[keynum] == 0) &&
+        (forall i: int :: keynum < i < ORDER ==> (
+            keys[i] == 0 && 
+            children[i] == null
+        ))
     }
 
+    ghost predicate non_cyclical()
+        // no node can be contain cyclical link   
+        reads *
+        requires is_leaf==false
+        requires length_ok()
+        requires child_nb()
+    {
+        (forall i: int :: 0 <= i < keynum+1 ==> (
+            this !in children[i].Repr
+        ))
+    }
 
     ghost predicate child_height_eq()
         // all subtrees must be the same height. 

@@ -26,7 +26,7 @@ For a tree of rank n
 - child_nb : contains one more child than it has keys. 
 - child_height_eq : all subtrees must be the same height. 
 - hierarchy : all keys in a given subtree is bounded by surrounding keys in parent node.
-
+- non_cyclical : no node can be contain cyclical link   
 #### for leaves
 - linked_leaves : contains extra pointer towards the next leaf.
 - all_keys_in_leaves : all keys appear in a leaf node.
