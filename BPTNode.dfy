@@ -17,16 +17,24 @@ class BPTNode {
     ghost var Repr: set<BPTNode>
 
 
+
     ghost predicate well()
         reads *
-        requires length_ok()
+        decreases height + 1 
     {
+        height >= -1 && // bottom limit 
+        length_ok() &&
         sorted()&&
         leaves_height_eq() && 
         (is_leaf==false ==> (
             child_nb() &&
             child_height_eq() &&
-            hierarchy()
+            hierarchy() &&
+            (forall i: int :: 0 <= i < keynum ==> (
+                children[i] is BPTNode &&
+                children[i].height +1 == height &&
+                children[i].well()
+            ))
         ))
     }
 
