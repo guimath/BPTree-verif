@@ -30,6 +30,7 @@ class BPTNode {
             child_nb() &&
             child_height_eq() &&
             hierarchy() &&
+            non_cyclical()&&
             (forall i: int :: 0 <= i < keynum ==> (
                 children[i].well()
             ))
