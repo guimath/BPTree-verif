@@ -1,6 +1,7 @@
 
+const ORDER:int := 5
+
 class BPTNode {
-    const ORDER := 5
     // array of length ORDER
     var keys: array<int>
     // array of length ORDER + 1
