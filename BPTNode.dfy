@@ -30,7 +30,7 @@ class BPTNode {
             ChildHeightEq() &&
             Hierarchy() &&
             NonCyclical()&&
-            (forall i: int :: 0 <= i < keyNum ==> (
+            (forall i: int :: 0 <= i < keyNum+1 ==> (
                 children[i].Well()
             ))
         ))
