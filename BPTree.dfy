@@ -17,6 +17,52 @@ class BPTree {
         Contents := {};
     } 
 
+    method Insert1(val: int) // TODO: add ptrs from one leaf to another
+        requires Well()
+        modifies this, Repr, root
+        //ensures Well()
+        //ensures Contents == old(Contents) + {val}
+    {
+        if root == null { // if there was no root, root becomes leaf node with only this inserted value in it
+            root := new BPTNode.Init();
+            root.keys[0] := val;
+            root.keyNum := 1;
+            root.Contents := {root.keys[0]};
+            assert root.keyNum == 1;
+            assert root.Contents == {root.keys[0]}; // TODO not sure if necessary 
+        } else {
+            assert root is BPTNode;
+            var current := root;
+            var parent: BPTNode;
+            assert current.Well(); // TODO do we need this?
+            if !current.isLeaf {
+                parent := current;
+            }
+            assert current.Well();
+            while !current.isLeaf 
+                decreases current.height {
+                parent := current;
+                assert current.Well();
+                
+                var i := 0;
+                while i < current.keyNum {
+                    assert 0<= i < ORDER;
+                    if val < current.keys[i] { // TODO be careful with < and <= signs
+                        current := current.children[i];
+                        break;
+                    }
+
+                    if i == current.keyNum - 1 { // if the value is greater than all possible go to last child
+                        current := current.children[i + 1];
+                        break;
+                    }
+                    i := i + 1;
+                }
+            }
+
+        }
+    }
+
     method Insert(val: int) // TODO: add ptrs from one leaf to another
         requires Well()
         modifies this, Repr
