@@ -109,7 +109,7 @@ class BPTNode {
     {
         forall i: int :: 0 <= i < keyNum+1 ==> (
             (forall k :: k in children[i].Contents ==> (
-                (i > 0 ==> k >= keys[i-1]) &&
+                (i > 0 ==> keys[i-1] < k) &&
                 (i< keyNum ==> k <= keys[i])
             ))
         )
