@@ -24,11 +24,11 @@ class BPTree {
         ensures Contents == old(Contents) + {val}
     {
         if root == null { // if there was no root, root becomes leaf node with only this inserted value in it
-            root := new BPTNode.init();
+            root := new BPTNode.Init();
             root.keys[0] := val;
-            root.keynum := 1;
-            assert root.keynum == 1 <==> root.Contents == {root.keys[0]}; // TODO not sure if necessary 
-            assert root.well(); // TODO probably remove this from here
+            root.keyNum := 1;
+            assert root.keyNum == 1 <==> root.Contents == {root.keys[0]}; // TODO not sure if necessary 
+            assert root.Well(); // TODO probably remove this from here
         } else {
             assert root != null;
             var current := root;
@@ -37,18 +37,18 @@ class BPTree {
             assert current != null;
 
             // reach the leaf in which we should insert value
-            while !current.is_leaf 
+            while !current.isLeaf 
                 decreases current.Repr {
                 parent := current;
 
                 var i := 0;
-                while i < current.keynum {
+                while i < current.keyNum {
                     if val < current.keys[i] { // TODO be careful with < and <= signs
                         current := current.children[i];
                         break;
                     }
 
-                    if i == current.keynum - 1 { // if the value is greater than all possible go to last child
+                    if i == current.keyNum - 1 { // if the value is greater than all possible go to last child
                         current := current.children[i + 1];
                         break;
                     }
@@ -56,33 +56,33 @@ class BPTree {
                 }
             }
 
-            assert current.well(); // TODO do we need this?
-            assert current.is_leaf == true;
+            assert current.Well(); // TODO do we need this?
+            assert current.isLeaf == true;
             
             // now we have reached leaf in which we are inserting the value 
-            if current.keynum < ORDER { // the node in which we are inserting is not full
+            if current.keyNum < ORDER { // the node in which we are inserting is not full
                 var i := 0;
-                while i < current.keynum && val < current.keys[i] {
+                while i < current.keyNum && val < current.keys[i] {
                     i := i + 1; // find location where the value should be inserted
                 }
 
-                for j: int := current.keynum downto i {
+                for j: int := current.keyNum downto i {
                     current.keys[j] := current.keys[j - 1]; // adjust other elements
                 }
                 current.keys[i] := val;
 
-                current.keynum := current.keynum + 1; // increase number of keys in the leaf
+                current.keyNum := current.keyNum + 1; // increase number of keys in the leaf
 
-                current.children[current.keynum] := current.children[current.keynum - 1]; // adjust pointer to next leaf
-                current.children[current.keynum - 1] := null;
+                current.children[current.keyNum] := current.children[current.keyNum - 1]; // adjust pointer to next leaf
+                current.children[current.keyNum - 1] := null;
 
                 current.Contents := current.Contents + {val}; // TODO all parents etc need to get Contents updated, maybe add while iterating or sth?
             }
             // not enough space in the leaf (splitting required)
-            else {  // TODO be careful here with Content and Repr, you have to move them as well
-                var newNode := new BPTNode.init();
+            else {  // TODO be careful here with Content and Repr, you have to move them as Well
+                var newNode := new BPTNode.Init();
                 var temp := new int[ORDER + 1]; // storing all keys and the new value in temporary list
-                for i := 0 to ORDER { // initialization 
+                for i := 0 to ORDER { // Initialization 
                     temp[i] := 0;
                 }
 
@@ -101,39 +101,39 @@ class BPTree {
                 temp[i] := val;
 
                 // start of rearrangement 
-                current.keynum := (ORDER + 1) / 2;
-                newNode.keynum := (ORDER + 1) - (ORDER + 1) / 2;
+                current.keyNum := (ORDER + 1) / 2;
+                newNode.keyNum := (ORDER + 1) - (ORDER + 1) / 2;
 
                 // pointers rearrangement
-                current.children[current.keynum] := newNode;
-                newNode.children[newNode.keynum] := current.children[ORDER];
+                current.children[current.keyNum] := newNode;
+                newNode.children[newNode.keyNum] := current.children[ORDER];
                 current.children[ORDER] := null;
 
                 current.Contents := {};
-                for i := 0 to current.keynum - 1 { 
+                for i := 0 to current.keyNum - 1 { 
                     current.keys[i] := temp[i];
                     current.Contents := current.Contents + {temp[i]}; 
                 }
-                for i := current.keynum to ORDER - 1 {
+                for i := current.keyNum to ORDER - 1 {
                     current.keys[i] := 0;
                 }
 
-                var j := current.keynum;
-                for i := 0 to newNode.keynum - 1 {
+                var j := current.keyNum;
+                for i := 0 to newNode.keyNum - 1 {
                     newNode.keys[i] := temp[j];
                     newNode.Contents := newNode.Contents + {temp[j]}; 
                     j := j + 1;
                 }
             
-                assert current.is_leaf == true && newNode.is_leaf == true;
+                assert current.isLeaf == true && newNode.isLeaf == true;
 
                 if current == root { // if current was root than we just create a new root with one key
-                    var newRoot := new BPTNode.init();
-                    newRoot.keynum := 1;
+                    var newRoot := new BPTNode.Init();
+                    newRoot.keyNum := 1;
                     newRoot.keys[0] := newNode.keys[0];
                     newRoot.children[0] := current;
                     newRoot.children[1] := newNode;
-                    newRoot.is_leaf := false;
+                    newRoot.isLeaf := false;
                     newRoot.Contents := newRoot.Contents + current.Contents + newNode.Contents;
                     newRoot.Repr := newRoot.Repr + current.Repr + newNode.Repr; 
                     root := newRoot;
@@ -151,35 +151,35 @@ class BPTree {
     method ShiftLevel(val: int, current: BPTNode, child: BPTNode) 
     // val is value to be inserted, current is the node in which we are trying to insert and child is newly created leaf node
         requires Well()
-        requires current.length_ok()
-        requires current.well()
+        requires current.LengthOk()
+        requires current.Well()
         modifies this, current, Repr
         ensures Well()
         decreases if root == null then {} else root.Repr - current.Repr
     {
-        if current.keynum < ORDER { // if new key can fit into parent node (parent is not full)
+        if current.keyNum < ORDER { // if new key can fit into parent node (parent is not full)
             var i := 0;
-            while i < current.keynum && val > current.keys[i] 
-                invariant 0 <= i <= current.keynum
+            while i < current.keyNum && val > current.keys[i] 
+                invariant 0 <= i <= current.keyNum
             {
                 i := i + 1; // find right position
             }
             
-            for j := current.keynum downto i {
+            for j := current.keyNum downto i {
                 current.keys[j] := current.keys[j - 1];
             }
 
-            assert i <= current.keynum ==> (i + 1 <= current.keynum + 1);
-            for j := current.keynum + 1 downto i + 1 {
+            assert i <= current.keyNum ==> (i + 1 <= current.keyNum + 1);
+            for j := current.keyNum + 1 downto i + 1 {
                 current.children[j] := current.children[j - 1];
             }
             current.keys[i] := val;
-            current.keynum := current.keynum + 1;
+            current.keyNum := current.keyNum + 1;
             current.children[i + 1] := child;
             current.Contents := current.Contents + {val}; // TODO this should be propagated upwards 
             current.Repr := current.Repr + child.Repr;
         } else { // internal node should also be splitted
-            var newInternal: BPTNode := new BPTNode.init();
+            var newInternal: BPTNode := new BPTNode.Init();
             var tempKey := new int[ORDER + 1];
             var tempChildren := new BPTNode?[ORDER + 2];
 
@@ -203,43 +203,43 @@ class BPTree {
             }
             tempChildren[i + 1] := child; // same for the pointers - new pointer in correct position
 
-            newInternal.is_leaf := false;
-            current.keynum := (ORDER + 1) / 2; // splitting the keys
-            newInternal.keynum := ORDER - (ORDER + 1) / 2;
+            newInternal.isLeaf := false;
+            current.keyNum := (ORDER + 1) / 2; // splitting the keys
+            newInternal.keyNum := ORDER - (ORDER + 1) / 2;
 
 
             // TODO -> update vrijednosti u current
             current.Contents := {};
-            for i := 0 to current.keynum - 1 {
+            for i := 0 to current.keyNum - 1 {
                 current.keys[i] := tempKey[i];
                 current.Contents := current.Contents + {tempKey[i]}; 
             }
-            for i := current.keynum to ORDER - 1 {
+            for i := current.keyNum to ORDER - 1 {
                 current.keys[i] := 0; 
             }
 
-            var j := current.keynum;
-            for i := 0 to newInternal.keynum {
+            var j := current.keyNum;
+            for i := 0 to newInternal.keyNum {
                 newInternal.keys[i] := tempKey[j];
                 j := j + 1;
             }
-            j := current.keynum + 1;
-            for i := 0 to newInternal.keynum + 1 {
+            j := current.keyNum + 1;
+            for i := 0 to newInternal.keyNum + 1 {
                 newInternal.children[i] := tempChildren[j];
                 j := j + 1;
             }
 
             if current == root { // again, if previous is 
-                var newRoot := new BPTNode.init();
+                var newRoot := new BPTNode.Init();
                 newRoot.keys[0] := newInternal.keys[0];
                 newRoot.children[0] := current;
                 newRoot.children[1] := newInternal;
-                newRoot.is_leaf := false;
-                newRoot.keynum := 1;
+                newRoot.isLeaf := false;
+                newRoot.keyNum := 1;
                 root := newRoot;
             } else {
                 var parent := FindParent(root, current);
-                ShiftLevel(current.keys[current.keynum], parent, newInternal);
+                ShiftLevel(current.keys[current.keyNum], parent, newInternal);
             }
         }
     } 
@@ -247,20 +247,20 @@ class BPTree {
 
     method FindParent(current: BPTNode, child: BPTNode) returns (parent: BPTNode?) 
         requires Well()
-        requires current.well()
+        requires current.Well()
         ensures Well()
         decreases current.height
     /* {
-        if current.is_leaf || current.children[0].is_leaf {
+        if current.isLeaf || current.children[0].isLeaf {
             return null;
         }
 
-        for i := 0 to current.keynum + 1 {
+        for i := 0 to current.keyNum + 1 {
             if current.children[i] == child {
                 parent := current;
                 return parent;
             } else {
-                assert current.well() ==> current.children[i].well();
+                assert current.Well() ==> current.children[i].Well();
                 parent := FindParent(current.children[i], child);
                 if parent != null {
                     return parent;
@@ -270,15 +270,15 @@ class BPTree {
         return null;
     } */
     {
-        if current.is_leaf || current.children[0].is_leaf {
+        if current.isLeaf || current.children[0].isLeaf {
             return null;
         }
 
         parent := null; // Initialize parent to null
 
         var i := 0;
-        while i <= current.keynum && parent == null 
-            decreases current.keynum - i // Ensure a decreasing loop variant
+        while i <= current.keyNum && parent == null 
+            decreases current.keyNum - i // Ensure a decreasing loop variant
         {
             if current.children[i] == child {
                 parent := current;
@@ -291,10 +291,10 @@ class BPTree {
         if parent == null {
             // If we haven't found the parent yet, continue searching in child nodes
             i := 0;
-            while i <= current.keynum && parent == null
-                decreases current.keynum - i // Ensure a decreasing loop variant
+            while i <= current.keyNum && parent == null
+                decreases current.keyNum - i // Ensure a decreasing loop variant
             {
-                assert current.children[i].well();
+                assert current.children[i].Well();
                 parent := FindParent(current.children[i], child);
                 i := i + 1;
             }
@@ -326,7 +326,7 @@ class BPTree {
         (root == null ==> Contents == {}) && 
         (root != null ==> 
             root in Repr && root.Repr <= Repr &&
-            root.well() &&
+            root.Well() &&
             Contents == root.Contents)
     }
 

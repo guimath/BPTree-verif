@@ -18,21 +18,21 @@ Example of a rank 2 B+ tree :
 For a tree of rank n
 
 #### For all nodes 
-- min_keys : must contain at least floor(n/2) keys.
-- sorted : keys are sorted from left two right
-- leaves_height_eq : a node has a height value of -1 if and only if it is a leaf
+- MinKeys : must contain at least floor(n/2) keys.
+- Sorted : keys are Sorted from left two right
+- LeavesHeightEq : a node has a height value of -1 if and only if it is a leaf
 
 #### For internal nodes
-- child_nb : contains one more child than it has keys. 
-- child_height_eq : all subtrees must be the same height. 
-- hierarchy : all keys in a given subtree is bounded by surrounding keys in parent node.
-- non_cyclical : no node can be contain cyclical link   
+- ChildNum : contains one more child than it has keys. 
+- ChildHeightEq : all subtrees must be the same height. 
+- Hierarchy : all keys in a given subtree are bounded by surrounding keys in parent node (lower key < subtree keys <= higher keys)
+- NonCyclical : no node can be contain cyclical link   
 #### for leaves
-- linked_leaves : contains extra pointer towards the next leaf.
-- all_keys_in_leaves : all keys appear in a leaf node.
+- LinkedLeaves : contains extra pointer towards the next leaf.
+- AllKeysInLeaves : all keys appear in a leaf node.
 
 ## for root 
 
-- min_root : If the root node is an internal node, it must contain at least 2 children.
+- MinRoot : If the root node is an internal node, it must contain at least 2 children.
 
 All these invariants are defined as ghost predicates in the [BPTNode.dfy](BPTNode.dfy) file

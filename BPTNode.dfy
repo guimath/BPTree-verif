@@ -7,136 +7,134 @@ class BPTNode {
     // array of length ORDER + 1
     var children: array<BPTNode?>
     // number of keys active
-    var keynum: int
+    var keyNum: int
     // height
     var height: int
     // is leaf
-    var is_leaf: bool 
+    var isLeaf: bool 
 
     // ghost set for verifivation
-    ghost var Contents: set<int> 
+    ghost var Contents: set<int>  
     ghost var Repr: set<BPTNode>
 
-
-
-    ghost predicate well()
+    ghost predicate Well()
         reads *
         decreases height
     {
         height >= -1 && // bottom limit 
-        length_ok() &&
-        sorted()&&
-        leaves_height_eq() && 
-        (is_leaf==false ==> (
-            child_nb() &&
-            child_height_eq() &&
-            hierarchy() &&
-            non_cyclical()&&
-            (forall i: int :: 0 <= i < keynum ==> (
-                children[i].well()
+        LengthOk() &&
+        Sorted()&&
+        LeavesHeightEq() && 
+        (isLeaf==false ==> (
+            ChildNum() &&
+            ChildHeightEq() &&
+            Hierarchy() &&
+            NonCyclical()&&
+            (forall i: int :: 0 <= i < keyNum ==> (
+                children[i].Well()
             ))
         ))
     }
 
     // ################ For all nodes ################
-    // - min_keys : must contain at least floor(n/2) keys.
+    // - MinKeys : must contain at least floor(n/2) keys.
     
-    ghost predicate sorted()
-        //keys are sorted from left two right
+    ghost predicate Sorted()
+        //keys are Sorted from left two right
         reads this, keys, children
-        requires length_ok()
+        requires LengthOk()
     {
-        forall i: int :: 0 <= i < keynum-1 ==> (
+        forall i: int :: 0 <= i < keyNum-1 ==> (
             keys[i] < keys[i+1]
         )
     }
-    ghost predicate leaves_height_eq()
+    ghost predicate LeavesHeightEq()
         // all leaves are at the same distance from the root (always -1).
         reads this
     {
-        is_leaf <==> height==-1
+        isLeaf <==> height==-1
     }
 
     // ################ For internal nodes ################
-    ghost predicate child_nb()
+    ghost predicate ChildNum()
         // contains one more child than it has keys. 
         reads this, keys, children
-        requires is_leaf==false
-        requires length_ok()
+        requires isLeaf==false
+        requires LengthOk()
     {
         // enough values
-        (forall i: int :: 0 <= i < keynum ==> (
+        (forall i: int :: 0 <= i < keyNum ==> (
             keys[i] > 0 && 
             children[i] is BPTNode
         )) &&
-        children[keynum] is BPTNode &&
+        children[keyNum] is BPTNode &&
         // no more values
-        (keynum < ORDER ==> keys[keynum] == 0) &&
-        (forall i: int :: keynum < i < ORDER ==> (
+        (keyNum < ORDER ==> keys[keyNum] == 0) &&
+        (forall i: int :: keyNum < i < ORDER ==> (
             keys[i] == 0 && 
             children[i] == null
         ))
     }
 
-    ghost predicate non_cyclical()
+    ghost predicate NonCyclical()
         // no node can be contain cyclical link   
         reads *
-        requires is_leaf==false
-        requires length_ok()
-        requires child_nb()
+        requires isLeaf==false
+        requires LengthOk()
+        requires ChildNum()
     {
-        (forall i: int :: 0 <= i < keynum+1 ==> (
+        (forall i: int :: 0 <= i < keyNum+1 ==> (
             this !in children[i].Repr
         ))
     }
 
-    ghost predicate child_height_eq()
+    ghost predicate ChildHeightEq()
         // all subtrees must be the same height. 
         reads *
-        requires is_leaf==false
-        requires length_ok()
-        requires child_nb()
+        requires isLeaf==false
+        requires LengthOk()
+        requires ChildNum()
     {   
-        (forall i: int :: 0 <= i < keynum+1 ==> (
+        (forall i: int :: 0 <= i < keyNum+1 ==> (
             children[i].height == height -1
         ))
     }
     
-    ghost predicate hierarchy()
-        // all keys in a given subtree is bounded by surrounding keys in parent node.
+    ghost predicate Hierarchy()
+        // all keys in a given subtree are bounded by surrounding keys in parent node.
         reads * 
-        requires is_leaf==false
-        requires length_ok()
-        requires child_nb()
+        requires isLeaf==false
+        requires LengthOk()
+        requires ChildNum()
     {
-        forall i: int :: 0 <= i < keynum+1 ==> (
+        forall i: int :: 0 <= i < keyNum+1 ==> (
             (forall k :: k in children[i].Contents ==> (
                 (i > 0 ==> k >= keys[i-1]) &&
-                (i< keynum ==> k <= keys[i])
+                (i< keyNum ==> k <= keys[i])
             ))
         )
     }
 
     // ################ for leaves ################
 
-    // - linked_leaves : contains extra pointer towards the next leaf.
-    // - all_keys_in_leaves : all keys appear in a leaf node.
+    // - LinkedLeaves : contains extra pointer towards the next leaf.
+    // - AllKeysInLeaves : all keys appear in a leaf node.
 
 
     // ################ generic ################
-    ghost predicate length_ok()
-        // the keys and children array are well formed
+    ghost predicate LengthOk()
+        // the keys and children array are Well formed
         reads this, children, keys
     {
         keys.Length == ORDER &&
         children.Length == ORDER+1 &&
-        keynum < ORDER + 1 &&
-        keynum >= 0 
+        keyNum < ORDER + 1 &&
+        keyNum >= 0 
     }
 
-    ghost predicate empty()
-        // the keys and children array are empty
-        requires length_ok()
+    ghost predicate Empty()
+        // the keys and children array are Empty
+        requires LengthOk()
         reads this, children, keys
     {
         (forall i: int :: 0 <= i < ORDER ==> (
@@ -146,22 +144,22 @@ class BPTNode {
         children[ORDER] == null
     }
 
-    constructor init()
+    constructor Init()
         ensures children.Length == ORDER + 1
         ensures keys.Length == ORDER
-        ensures keynum==0
+        ensures keyNum==0
         ensures height==-1
-        ensures is_leaf==true
-        ensures empty()
-        ensures well()
+        ensures isLeaf==true
+        ensures Empty()
+        ensures Well()
         //ensures Valid() && Well() && fresh(Repr - {this})
         ensures Contents == {}
         ensures Repr == {this}
 
     {
-        is_leaf := true;
+        isLeaf := true;
         height := -1;
-        keynum := 0;
+        keyNum := 0;
         Contents := {};
         Repr := {this};
         children := new BPTNode?[ORDER + 1][null, null, null, null, null, null];
