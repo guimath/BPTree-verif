@@ -155,6 +155,8 @@ class BPTNode {
         //ensures Valid() && Well() && fresh(Repr - {this})
         ensures Contents == {}
         ensures Repr == {this}
+        ensures fresh(keys)
+        ensures fresh(children)
 
     {
         isLeaf := true;
