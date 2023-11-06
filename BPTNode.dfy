@@ -15,25 +15,40 @@ class BPTNode {
 
     // ghost set for verifivation
     ghost var Contents: set<int>  
-    ghost var Repr: set<BPTNode>
+    ghost var Repr: set<object>
 
-    ghost predicate Well()
-        reads *
+    ghost predicate Valid()
+        reads * // TODO I think this should be reduced
         decreases height
+        ensures Valid() ==> this in Repr
     {
+        this in Repr && 
         height >= -1 && // bottom limit 
         LengthOk() &&
         Sorted()&&
         LeavesHeightEq() && 
+        KeysInRepr() &&
         (isLeaf==false ==> (
             ChildNum() &&
+            ChildrenInRepr() &&
             ChildHeightEq() &&
             Hierarchy() &&
-            NonCyclical()&&
+            NonCyclical() &&
             (forall i: int :: 0 <= i < keyNum+1 ==> (
-                children[i].Well()
-            ))
-        ))
+                children[i] != null ==> (children[i].Valid() && 
+                    children[i] in Repr && children[i].Repr <= Repr && // TODO maybe not needed because of ChildrenInRepr
+                    children[i].Contents <= Contents) // TODO maybe not needed because of sum of children's contents
+            )) && 
+            (keyNum > 0 ==> (Contents == SumOfChildContents(children[0..keyNum])))
+        )) 
+    }
+
+
+    ghost function SumOfChildContents(children: seq<BPTNode>): set<int>
+        reads children 
+    {
+        if children == [] then {}
+        else children[0].Contents + SumOfChildContents(children[1..])
     }
 
     // ################ For all nodes ################
@@ -58,7 +73,7 @@ class BPTNode {
     // ################ For internal nodes ################
     ghost predicate ChildNum()
         // contains one more child than it has keys. 
-        reads this, keys, children
+        reads this, Repr, keys, children
         requires isLeaf==false
         requires LengthOk()
     {
@@ -78,10 +93,11 @@ class BPTNode {
 
     ghost predicate NonCyclical()
         // no node can be contain cyclical link   
-        reads *
+        reads this, Repr, children, keys
         requires isLeaf==false
         requires LengthOk()
         requires ChildNum()
+        requires ChildrenInRepr()
     {
         (forall i: int :: 0 <= i < keyNum+1 ==> (
             this !in children[i].Repr
@@ -90,21 +106,37 @@ class BPTNode {
 
     ghost predicate ChildHeightEq()
         // all subtrees must be the same height. 
-        reads *
+        reads this, Repr, children, keys
         requires isLeaf==false
         requires LengthOk()
         requires ChildNum()
+        requires ChildrenInRepr()
     {   
         (forall i: int :: 0 <= i < keyNum+1 ==> (
             children[i].height == height -1
         ))
     }
-    
+
+    ghost predicate ChildrenInRepr()
+        reads this, Repr, children
+        requires LengthOk()
+    {
+        forall i: int :: 0 <= i < keyNum+1 ==> ( children[i] != null ==> (children[i] in Repr && children[i].Repr <= Repr ))
+    }   
+
+    ghost predicate KeysInRepr()
+        reads this, Repr
+        requires LengthOk()
+    {
+        keys in Repr
+    } 
+
     ghost predicate Hierarchy()
         // all keys in a given subtree are bounded by surrounding keys in parent node.
-        reads * 
+        reads this, Repr, children, keys
         requires isLeaf==false
         requires LengthOk()
+        requires ChildrenInRepr()
         requires ChildNum()
     {
         forall i: int :: 0 <= i < keyNum+1 ==> (
@@ -124,7 +156,7 @@ class BPTNode {
     // ################ generic ################
     ghost predicate LengthOk()
         // the keys and children array are Well formed
-        reads this, children, keys
+        reads this
     {
         keys.Length == ORDER &&
         children.Length == ORDER+1 &&
@@ -134,8 +166,8 @@ class BPTNode {
 
     ghost predicate Empty()
         // the keys and children array are Empty
-        requires LengthOk()
         reads this, children, keys
+        requires LengthOk()
     {
         (forall i: int :: 0 <= i < ORDER ==> (
             children[i]==null &&
@@ -151,21 +183,22 @@ class BPTNode {
         ensures height==-1
         ensures isLeaf==true
         ensures Empty()
-        ensures Well()
+        ensures Valid() 
+        ensures fresh(Repr - {this})
         //ensures Valid() && Well() && fresh(Repr - {this})
         ensures Contents == {}
-        ensures Repr == {this}
-        ensures fresh(keys)
-        ensures fresh(children)
+        //ensures Repr == {this}
+        ensures fresh(Repr - {this})
 
     {
         isLeaf := true;
         height := -1;
         keyNum := 0;
-        Contents := {};
-        Repr := {this};
         children := new BPTNode?[ORDER + 1][null, null, null, null, null, null];
         keys := new int[ORDER][0, 0, 0, 0, 0];
+        Contents := {};
+        Repr := {this} + {keys} + {children}; 
+        
         // Hardcoded rather than loop because weird error :
         // "in the first division of the constructor body (before 'new;'), 
         // 'this' can only be used to assign to its fields"
@@ -175,7 +208,6 @@ class BPTNode {
         //     children[i] := null;
         // }
         // children[ORDER] := null;
-
 
     }
 
