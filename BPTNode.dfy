@@ -177,6 +177,81 @@ class BPTNode {
         children[ORDER] == null
     }
 
+    ghost predicate NotFull()
+        reads this
+    {
+        keyNum < ORDER
+    }
+    
+    method InsertAtLeaf(key:int) 
+        requires Valid()
+        requires isLeaf == true 
+        requires NotFull() 
+        requires key > 0
+        requires forall j: int :: 0 <= j < keyNum ==> (key != keys[j])
+        modifies this, keys
+        ensures Valid()
+    {
+        var idx := keyNum;
+        if keyNum > 0 {
+            // getting idx first key higher insert key 
+            for i := 0 to keyNum 
+                invariant i>0 ==> key > keys[i-1]
+                // invariant i == idx ==> key < keys[i]
+            {
+                if key < keys[i] {
+                    idx := i;
+                    break;
+                }
+            }      
+
+            assert idx < keyNum ==> key < keys[idx];
+            assert 0< idx < keyNum ==> keys[idx-1] < key;
+            // shifting
+            if idx < keyNum {
+                var i:=keyNum-1;
+                ghost var rep_key := keys[idx];
+                // ghost var prev_keys := keys;
+
+                while i >= idx
+                    modifies keys 
+                    invariant (0<=idx<keyNum) ==> key < keys[idx]
+                    invariant (0<idx<keyNum) ==> keys[idx-1] < key
+                    invariant forall j: int :: 0 <= j < idx ==> (
+                        keys[j] < keys[j+1]
+                    )   
+                    invariant rep_key == keys[idx]
+                    // invariant idx <= i < keyNum-1 ==> keys[i+2] == prev_keys[i+1]
+                    
+                {
+                    // assert  i < keyNum-1 ==> keys[i] < keys[i+1];
+                    // assert keys[i] == prev_keys[i];
+                    keys[i+1] := keys[i];
+                    i := i-1;
+                    // assert  idx > 0 ==> keys[i] < keys[i+1];
+                    // assert keys[i+2] == prev_keys[i+1];
+                }
+                if keyNum-1 >= idx {
+                    keys[idx+1] := keys[idx];
+                }
+                assert 0 < idx ==> keys[idx-1] < key;
+                assert keyNum-1 >= idx ==> keys[idx+1] == keys[idx];
+                assert idx < keyNum-1 ==> (key < keys[idx+1]); 
+            }
+        }
+        keys[idx] := key;
+        assert forall j: int :: 0 <= j < idx ==> (
+            keys[j] < keys[j+1] 
+        );   
+        assume forall j: int :: idx < j < keyNum ==> ( // TODO use invariants to prove
+            keys[j] < keys[j+1]
+        );   
+        assert 0 < idx ==> keys[idx-1]< keys[idx];
+        assert idx < keyNum ==> keys[idx] < keys[idx+1];
+        keyNum := keyNum+1; //TODO add to Repr and modify child also
+        assert Valid();
+    }
+
     constructor Init()
         ensures children.Length == ORDER + 1
         ensures keys.Length == ORDER
