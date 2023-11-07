@@ -34,11 +34,10 @@ class BPTNode {
             ChildHeightEq() &&
             Hierarchy() &&
             NonCyclical() &&
-            (forall i: int :: 0 <= i < keyNum+1 ==> (
-                children[i] != null ==> (children[i].Valid() && 
-                    children[i] in Repr && children[i].Repr <= Repr && // TODO maybe not needed because of ChildrenInRepr
-                    children[i].Contents <= Contents) // TODO maybe not needed because of sum of children's contents
-            )) && 
+            (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
+                children[i].Valid() && 
+                children[i].Contents <= Contents) // TODO maybe not needed because of sum of children's contents
+            ) && 
             (keyNum > 0 ==> (Contents == SumOfChildContents(children[0..keyNum])))
         )) 
     }
@@ -118,10 +117,12 @@ class BPTNode {
     }
 
     ghost predicate ChildrenInRepr()
-        reads this, Repr, children
+        reads this, Repr, children, keys
+        requires isLeaf == false
         requires LengthOk()
+        requires ChildNum()
     {
-        forall i: int :: 0 <= i < keyNum+1 ==> ( children[i] != null ==> (children[i] in Repr && children[i].Repr <= Repr ))
+        forall i: int :: 0 <= i < keyNum+1 ==> ( children[i] in Repr && children[i].Repr <= Repr )
     }   
 
     ghost predicate KeysInRepr()
@@ -136,8 +137,8 @@ class BPTNode {
         reads this, Repr, children, keys
         requires isLeaf==false
         requires LengthOk()
-        requires ChildrenInRepr()
         requires ChildNum()
+        requires ChildrenInRepr()
     {
         forall i: int :: 0 <= i < keyNum+1 ==> (
             (forall k :: k in children[i].Contents ==> (
