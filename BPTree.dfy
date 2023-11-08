@@ -78,7 +78,7 @@ class BPTree {
                 for i := 0 to idx { // copy all keys from the leaf (the leaf is full)
                     temp[i] := current.keys[i];
                 }
-                for i := idx +1 to ORDER { // copy all keys from the leaf (the leaf is full)
+                for i := idx +1 to ORDER+1 { // copy all keys from the leaf (the leaf is full)
                     temp[i] := current.keys[i-1];
                 }
                 temp[idx] := val;
