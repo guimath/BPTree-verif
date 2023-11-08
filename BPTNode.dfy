@@ -183,6 +183,27 @@ class BPTNode {
         keyNum < ORDER
     }
     
+
+    method GetInsertIndex(key:int) returns (idx:int)
+        requires Valid()
+        requires key > 0
+        requires forall j: int :: 0 <= j < keyNum ==> (key != keys[j])
+        ensures 0<= idx <= keyNum 
+        ensures idx > 0 ==> keys[idx-1]< key
+        ensures idx < keyNum ==> key < keys[idx]
+    {
+        idx := keyNum;
+        for i := 0 to keyNum 
+            invariant i>0 ==> key > keys[i-1]
+            // invariant i == idx ==> key < keys[i]
+        {
+            if key < keys[i] {
+                idx := i;
+                break;
+            }
+        }      
+    }
+    
     method InsertAtLeaf(key:int) 
         requires Valid()
         requires isLeaf == true 
@@ -192,19 +213,8 @@ class BPTNode {
         modifies this, keys
         ensures Valid()
     {
-        var idx := keyNum;
+        var idx := GetInsertIndex(key);
         if keyNum > 0 {
-            // getting idx first key higher insert key 
-            for i := 0 to keyNum 
-                invariant i>0 ==> key > keys[i-1]
-                // invariant i == idx ==> key < keys[i]
-            {
-                if key < keys[i] {
-                    idx := i;
-                    break;
-                }
-            }      
-
             assert idx < keyNum ==> key < keys[idx];
             assert 0< idx < keyNum ==> keys[idx-1] < key;
             // shifting
@@ -226,7 +236,7 @@ class BPTNode {
                 {
                     // assert  i < keyNum-1 ==> keys[i] < keys[i+1];
                     // assert keys[i] == prev_keys[i];
-                    keys[i+1] := keys[i];
+                    keys[i+1] := keys[i]; //TODO use temp array to simplify Invariants
                     i := i-1;
                     // assert  idx > 0 ==> keys[i] < keys[i+1];
                     // assert keys[i+2] == prev_keys[i+1];
