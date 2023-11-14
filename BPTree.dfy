@@ -438,51 +438,75 @@ class BPTree {
             assert node.keyNum >= 1;
             inTree := false;
             var keyNum := node.keyNum;
-            for i := 0 to keyNum - 1 
-                invariant 0 <= i <= keyNum -1
-                invariant forall j: int :: 0 <= j < i < keyNum ==> node.keys[j] != val
-            //    invariant (exists j: int :: 0 <= j < i && node.keys[j] == val) ==> (node.KeysInContents() ==> val in node.Contents)
+
+
+            var i := 0;
+            while i< keyNum
+                invariant forall j: int :: 0 <= j < i<= keyNum ==> node.keys[j] != val
+                invariant 0 <= i <= keyNum
             {
-                if node.keys[i] == val { 
+                if node.keys[i] == val {
                     inTree := inTree || true;
-//                    assert ( node.keys[i] == val && node.KeysInContents() ) ==> val in node.Contents;
+                //    assert ( node.keys[i] == val && node.KeysInContents() ) ==> val in node.Contents; // causes timeout
                     assert ValInSubTree(node, val) == true; // && inTree == true;
-                    return; 
-                } 
-                assert forall j: int :: 0 <= j <= i <= keyNum - 1 ==> node.keys[j] != val;
-                assert node.keys[i] != val;
-                assert i == keyNum -1 ==> node.keys[keyNum - 1] != val;
-                assert val !in node.keys[..i];
+                    return;
+                }
+                i := i+1;
             }
-            assert inTree == false;
-        //    assert node.keys[node.keyNum - 1] != val;
-        //    assert val !in node.keys[..node.keyNum];
+            assert i == keyNum;
+    //        assert inTree == false;
+    //        assert node.keys[node.keyNum - 1] != val;
+    //        assert val !in node.keys[..node.keyNum];
             assert forall i: int :: 0 <= i <= keyNum - 1 ==> ( node.keys[i] != val );
-//            assert val !in node.Contents; // maybe add sth like true subset 
-//            assert ValInSubTree(node, val) == false;
+    //        assert val !in node.Contents; 
+    //        assert ValInSubTree(node, val) == false;
             inTree := false;
             return;
         } else { 
             var i := 0;
             while i < node.keyNum 
                 invariant 0 <= i <= node.keyNum
-                invariant 1 <= i < node.keyNum ==> ( val > node.keys[i - 1] )  
+                invariant 1 <= i <= node.keyNum ==> ( val > node.keys[i - 1] )  
+                invariant forall j : int :: 0 <= j < i <= node.keyNum ==> (!ValInSubTree(node.children[j], val))
             {
                 if val <= node.keys[i] {
                     inTree := FindHelper(node.children[i], val);
                     assert ( ValInSubTree(node.children[i], val) ==> inTree == true );
                     assert ( !ValInSubTree(node.children[i], val) ==> inTree == false );
                     assert node.Valid() ==> node.children[i].Contents <= node.Contents;
-   //                 assert node.Hierarchy() ==> (i > 0 && val < node.keys[i] ==> ( node.keys[i - 1] <= val )));
-  //                  assert ( node.Hierarchy() && node.keys[i - 1] <= val < node.keys[i] && !ValInSubTree(node.children[i], val) ) ==> !ValInSubTree(node, val);
+                    assert node.Hierarchy() ==> (i > 0 && val < node.keys[i] ==> ( node.keys[i - 1] <= val ));
+
+                //    assert ( node.Hierarchy() && node.keys[i - 1] <= val < node.keys[i] && !ValInSubTree(node.children[i], val) ) ==> !ValInSubTree(node, val);
                     return;
-                } else {
-                    i := i + 1;
-                }
+                } 
+                i := i + 1;
             }
 
-            assert i == node.keyNum && val > node.keys[i - 1];
+            assert val > node.keys[node.keyNum - 1];
+            assert forall i : int :: 0 <= i < node.keyNum ==> (!ValInSubTree(node.children[i], val));
             inTree := FindHelper(node.children[node.keyNum], val);
+            assert ( ValInSubTree(node.children[node.keyNum], val) ==> inTree == true );
+            assert ( !ValInSubTree(node.children[node.keyNum], val) ==> inTree == false );
+            
+        //    assert node.isLeaf == false ==> (node.Valid() ==> (node.Contents == node.SumOfChildContents(node.children[0..node.keyNum+1]))); // TIMEOUT
+        //    assert (val in node.children[node.keyNum].Contents ==> val in node.Contents);
+        //    assert val in node.Contents ==> ValInSubTree(node, val);
+            assert ValInSubTree(node.children[node.keyNum], val) ==> ValInSubTree(node, val);
+            assert node.Contents == node.SumOfChildContents(node.children[0..node.keyNum+1]);
+        /*    assert !ValInSubTree(node.children[node.keyNum], val) ==> !ValInSubTree(node, val) by {
+                assert forall i : int :: 0 <= i < node.keyNum ==> (!ValInSubTree(node.children[i], val));
+                assert node.Contents == node.SumOfChildContents(node.children[0..node.keyNum+1]);
+            }
+            assert ValInSubTree(node.children[node.keyNum], val) == ValInSubTree(node, val) by {
+                assert forall i : int :: 0 <= i < node.keyNum ==> (!ValInSubTree(node.children[i], val));
+                assert ValInSubTree(node.children[node.keyNum], val) ==> ValInSubTree(node, val);
+                assert !ValInSubTree(node.children[node.keyNum], val) ==> !ValInSubTree(node, val);
+            } */
+        //    assert ( ValInSubTree(node, val) ==> val in node.children[node.keyNum].Contents); // DOES NOT HOLD
+        //    assert (exists i: int :: 0 <= i <= node.keyNum && val in node.children[i].Contents) ==> inTree == true; // TIMEOUT
+            assert ( ValInSubTree(node, val) ==> inTree == true );
+            assert ( !ValInSubTree(node, val) ==> inTree == false );
+   //         assert ( (forall i: int :: 0 <= i <= node.keyNum ==> ( !ValInSubTree(node.children[i], val))) ==> inTree == false);
             return;
         }
 
