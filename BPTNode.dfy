@@ -146,8 +146,9 @@ class BPTNode {
         requires LengthOk()
         requires KeysInRepr()
     {
-        (isLeaf == true ==> (|Contents| == keyNum
-                            && (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
+        (isLeaf == true ==> (
+            |Contents| == keyNum && 
+            (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
         )) &&
         forall i : int :: 0 <= i < keyNum ==> (
             keys[i] in Contents
@@ -221,11 +222,11 @@ class BPTNode {
 
     method GetInsertIndex(key:int) returns (idx:int)
         requires Valid()
-        requires key > 0
         requires forall j: int :: 0 <= j < keyNum ==> (key != keys[j])
         ensures 0<= idx <= keyNum 
         ensures idx > 0 ==> keys[idx-1]< key
         ensures idx < keyNum ==> key < keys[idx]
+        ensures Valid()
     {
         idx := keyNum;
         for i := 0 to keyNum 
@@ -243,10 +244,10 @@ class BPTNode {
         requires Valid()
         requires isLeaf == true 
         requires NotFull() 
-        requires key > 0
-        requires forall j: int :: 0 <= j < keyNum ==> (key != keys[j])
+        requires !(key in Contents)
+        //requires forall j: int :: 0 <= j < keyNum ==> (key != keys[j])
         modifies this, keys
-  //      ensures Valid()
+        ensures Valid()
     {
         var idx := GetInsertIndex(key);
         ghost var prev_keys := keys[..];
@@ -294,19 +295,18 @@ class BPTNode {
         assert 0 < idx ==> keys[idx-1]< keys[idx];
         assert idx < keyNum ==> keys[idx] < keys[idx+1];
         keyNum := keyNum+1; //TODO add to Repr and modify child also
-        Contents := {};
-        for j:int := 0  to keyNum {
-            Contents := Contents + {keys[j]};
-        }
-//        assert KeysInRepr();
-//        assert KeysInContents();
-        assume forall j: int :: 0 <= j < idx ==> (
+        // Contents := {};
+        // for j:int := 0  to keyNum {
+        //     Contents := Contents + {keys[j]};
+        // }
+        assume KeysInContents();
+        assume KeysInRepr();
+        assert forall j: int :: 0 <= j < idx ==> (
             keys[j] == prev_keys[j] // ensure the array is unchanged
         );
-        assume forall j: int :: idx < j < keyNum ==> (
+        assert forall j: int :: idx < j < keyNum ==> (
             keys[j] == prev_keys[j-1] // ensure the array is unchanged
         );
-   //     assert Valid();
     }
 
     constructor Init()
