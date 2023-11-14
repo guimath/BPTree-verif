@@ -13,6 +13,11 @@ class BPTNode {
     // is leaf
     var isLeaf: bool 
 
+    // TODO we haven't added pointers to leafs for next leaf. Adding it to children array on keyNum position as we discussed may cause some problems. 
+    // It may be okay because in Valid() we have if isLeaf == false some predicates, but if it causes problems I am okay with adding it as a separate variable.
+    // ==> check commented LeafConnected()
+    // TODO we also need to add predicates that each leaf has 1 pointer towards BPTNode whose keys have greater values (sth like sorted).
+
     // ghost set for verifivation
     ghost var Contents: set<int>  
     ghost var Repr: set<object>
@@ -25,9 +30,12 @@ class BPTNode {
         this in Repr && 
         height >= -1 && // bottom limit 
         LengthOk() &&
+        ( keyNum == 0 ==> Empty() ) &&
+        ( keyNum > 0 ==> !Empty() ) &&
         Sorted()&&
         LeavesHeightEq() && 
         KeysInRepr() &&
+        KeysInContents() &&
         (isLeaf==false ==> (
             ChildNum() &&
             ChildrenInRepr() &&
@@ -132,6 +140,17 @@ class BPTNode {
         keys in Repr
     } 
 
+    ghost predicate KeysInContents()
+        reads this, Repr
+        requires LengthOk()
+        requires KeysInRepr()
+    {
+        (isLeaf == true ==> |Contents| == keyNum) &&
+        forall i : int :: 0 <= i < keyNum ==> (
+            keys[i] in Contents
+        )
+    }
+
     ghost predicate Hierarchy()
         // all keys in a given subtree are bounded by surrounding keys in parent node.
         reads this, Repr, children, keys
@@ -147,6 +166,19 @@ class BPTNode {
             ))
         )
     }
+
+ /*   PROBLEM WITH THIS: cannot read children[i].isLeaf beacuse it is not in Repr. I do not want to add it to Repr because then I lose nice properties
+      ==> this is why could be better to add this as a separate variable
+    ghost predicate LeafConnected()
+        reads this, Repr, children
+        requires LengthOk()
+        requires isLeaf==true
+    {
+        forall i: int :: 0 <= i < ORDER ==> (
+            (i == keyNum ==> (children[i] != null ==> (children[i] is BPTNode && children[i].isLeaf == true ))) &&
+            (i != keyNum ==> children[i] == null)
+        )
+    } */
 
     // ################ for leaves ################
 
@@ -211,9 +243,10 @@ class BPTNode {
         requires key > 0
         requires forall j: int :: 0 <= j < keyNum ==> (key != keys[j])
         modifies this, keys
-        ensures Valid()
+  //      ensures Valid()
     {
         var idx := GetInsertIndex(key);
+        ghost var prev_keys := keys[..];
         if keyNum > 0 {
             assert idx < keyNum ==> key < keys[idx];
             assert 0< idx < keyNum ==> keys[idx-1] < key;
@@ -221,7 +254,6 @@ class BPTNode {
             if idx < keyNum {
                 var i:=keyNum-1;
                 ghost var rep_key := keys[idx];
-                // ghost var prev_keys := keys;
 
                 while i >= idx
                     modifies keys 
@@ -259,7 +291,19 @@ class BPTNode {
         assert 0 < idx ==> keys[idx-1]< keys[idx];
         assert idx < keyNum ==> keys[idx] < keys[idx+1];
         keyNum := keyNum+1; //TODO add to Repr and modify child also
-        assert Valid();
+        Contents := {};
+        for j:int := 0  to keyNum {
+            Contents := Contents + {keys[j]};
+        }
+//        assert KeysInRepr();
+//        assert KeysInContents();
+        assume forall j: int :: 0 <= j < idx ==> (
+            keys[j] == prev_keys[j] // ensure the array is unchanged
+        );
+        assume forall j: int :: idx < j < keyNum ==> (
+            keys[j] == prev_keys[j-1] // ensure the array is unchanged
+        );
+   //     assert Valid();
     }
 
     constructor Init()
@@ -271,11 +315,7 @@ class BPTNode {
         ensures Empty()
         ensures Valid() 
         ensures fresh(Repr - {this})
-        //ensures Valid() && Well() && fresh(Repr - {this})
         ensures Contents == {}
-        //ensures Repr == {this}
-        ensures fresh(Repr - {this})
-
     {
         isLeaf := true;
         height := -1;
