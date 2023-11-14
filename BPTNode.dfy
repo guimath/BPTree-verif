@@ -46,7 +46,8 @@ class BPTNode {
                 children[i].Valid() && 
                 children[i].Contents <= Contents) // TODO maybe not needed because of sum of children's contents
             ) && 
-            (keyNum > 0 ==> (Contents == SumOfChildContents(children[0..keyNum])))
+            (keyNum > 0 ==> (Contents == SumOfChildContents(children[0..keyNum+1]) && (forall num: int :: (num in Contents ==> num in SumOfChildContents(children[0..keyNum+1])))))
+          //  && (forall val: int :: val in Contents ==> (exists j: int :: 0 <= j <= keyNum && val in children[j].Contents))))
         )) 
     }
 
@@ -145,7 +146,9 @@ class BPTNode {
         requires LengthOk()
         requires KeysInRepr()
     {
-        (isLeaf == true ==> |Contents| == keyNum) &&
+        (isLeaf == true ==> (|Contents| == keyNum
+                            && (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
+        )) &&
         forall i : int :: 0 <= i < keyNum ==> (
             keys[i] in Contents
         )
@@ -161,8 +164,8 @@ class BPTNode {
     {
         forall i: int :: 0 <= i < keyNum+1 ==> (
             (forall k :: k in children[i].Contents ==> (
-                (i > 0 ==> keys[i-1] < k) &&
-                (i< keyNum ==> k <= keys[i])
+                (i > 0 ==> keys[i-1] <= k) &&
+                (i< keyNum ==> k < keys[i])
             ))
         )
     }
