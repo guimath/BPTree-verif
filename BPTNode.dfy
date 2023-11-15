@@ -54,6 +54,7 @@ class BPTNode {
 
     ghost function SumOfChildContents(children: seq<BPTNode>): set<int>
         reads children 
+        decreases |children|
     {
         if children == [] then {}
         else children[0].Contents + SumOfChildContents(children[1..])
@@ -222,7 +223,7 @@ class BPTNode {
 
     method GetInsertIndex(key:int) returns (idx:int)
         requires Valid()
-        requires forall j: int :: 0 <= j < keyNum ==> (key != keys[j])
+        requires !(key in Contents)
         ensures 0<= idx <= keyNum 
         ensures idx > 0 ==> keys[idx-1]< key
         ensures idx < keyNum ==> key < keys[idx]
@@ -245,7 +246,6 @@ class BPTNode {
         requires isLeaf == true 
         requires NotFull() 
         requires !(key in Contents)
-        //requires forall j: int :: 0 <= j < keyNum ==> (key != keys[j])
         modifies this, keys
         ensures Valid()
     {
@@ -259,54 +259,52 @@ class BPTNode {
                 var i:=keyNum-1;
                 ghost var rep_key := keys[idx];
 
-                while i >= idx
+                while idx <= i
                     modifies keys 
-                    invariant (0<=idx<keyNum) ==> key < keys[idx]
-                    invariant (0<idx<keyNum) ==> keys[idx-1] < key
+                    invariant idx-1<= i 
+                    invariant (0 <= idx < keyNum) ==> key < keys[idx]
+                    invariant (0 <  idx < keyNum) ==> keys[idx-1] < key
+                    invariant rep_key == keys[idx] 
                     invariant forall j: int :: 0 <= j < idx ==> (
                         keys[j] < keys[j+1]
                     )   
-                    invariant rep_key == keys[idx]
-                    // invariant idx <= i < keyNum-1 ==> keys[i+2] == prev_keys[i+1]
-                    
+                    invariant forall j: int :: 0 <= j <= i ==> ( // i = idx -1 
+                        keys[j] == prev_keys[j] // untouched part of array
+                    )   
+                    invariant forall j: int :: i < j < keyNum ==> ( // end : i = idx -1 
+                        keys[j+1] == prev_keys[j]
+                    )  
                 {
-                    // assert  i < keyNum-1 ==> keys[i] < keys[i+1];
-                    // assert keys[i] == prev_keys[i];
                     keys[i+1] := keys[i]; //TODO use temp array to simplify Invariants
                     i := i-1;
-                    // assert  idx > 0 ==> keys[i] < keys[i+1];
-                    // assert keys[i+2] == prev_keys[i+1];
                 }
-                if keyNum-1 >= idx {
-                    keys[idx+1] := keys[idx];
-                }
-                assert 0 < idx ==> keys[idx-1] < key;
-                assert keyNum-1 >= idx ==> keys[idx+1] == keys[idx];
-                assert idx < keyNum-1 ==> (key < keys[idx+1]); 
+
+                assert i == idx -1;
+                assert forall j: int :: idx <= j < keyNum ==> ( 
+                    keys[j+1] == prev_keys[j]
+                );
+                assert forall j: int :: idx < j < keyNum ==> ( // previous array was sorted so this is also
+                    keys[j] < keys[j+1]
+                );   
             }
         }
         keys[idx] := key;
-        assert forall j: int :: 0 <= j < idx ==> (
+        assert forall j: int :: 0 <= j < idx ==> ( //first part sorted
             keys[j] < keys[j+1] 
         );   
-        assume forall j: int :: idx < j < keyNum ==> ( // TODO use invariants to prove
+        assert forall j: int :: idx < j < keyNum ==> ( //sec part sorted
             keys[j] < keys[j+1]
         );   
-        assert 0 < idx ==> keys[idx-1]< keys[idx];
-        assert idx < keyNum ==> keys[idx] < keys[idx+1];
-        keyNum := keyNum+1; //TODO add to Repr and modify child also
+        assert 0 < idx ==> keys[idx-1]< keys[idx]; // idx larger than prev
+        assert idx < keyNum ==> keys[idx] < keys[idx+1]; // idx bigger then next
+        keyNum := keyNum+1; 
+        //TODO add to Repr and modify child also
+        assume KeysInContents();
+        assume KeysInRepr();
         // Contents := {};
         // for j:int := 0  to keyNum {
         //     Contents := Contents + {keys[j]};
         // }
-        assume KeysInContents();
-        assume KeysInRepr();
-        assert forall j: int :: 0 <= j < idx ==> (
-            keys[j] == prev_keys[j] // ensure the array is unchanged
-        );
-        assert forall j: int :: idx < j < keyNum ==> (
-            keys[j] == prev_keys[j-1] // ensure the array is unchanged
-        );
     }
 
     constructor Init()
