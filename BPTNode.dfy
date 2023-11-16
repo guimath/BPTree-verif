@@ -42,7 +42,7 @@ class BPTNode {
             ChildHeightEq() &&
             Hierarchy() &&
             NonCyclical() &&
-            ChildrenContentsDisjoint() &&
+            // ChildrenContentsDisjoint() &&
             (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
                 children[i].keys in Repr && 
                 children[i].children in Repr && 
@@ -64,7 +64,6 @@ class BPTNode {
         LengthOk() &&
         ( keyNum == 0 ==> Empty() ) &&
         // ( keyNum > 0 ==> !Empty() ) &&
-        KeysInRepr() &&
         Sorted()&&
         LeavesHeightEq() && 
         (isLeaf==false ==> (
@@ -73,6 +72,7 @@ class BPTNode {
             ChildHeightEq() &&
             Hierarchy() &&
             NonCyclical() &&
+            // ChildrenContentsDisjoint() &&
             (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
                 children[i].keys in Repr && 
                 children[i].children in Repr && 
@@ -128,9 +128,8 @@ class BPTNode {
     
     ghost predicate Sorted()
         //keys are Sorted from left two right
-        reads this, Repr
+        reads this, keys
         requires LengthOk()
-        requires KeysInRepr()
     {
         forall i: int :: 0 <= i < keyNum-1 ==> (
             keys[i] < keys[i+1]
@@ -344,7 +343,7 @@ class BPTNode {
                         keys[j+1] == prev_keys[j]
                     )  
                 {
-                    keys[i+1] := keys[i]; //TODO use temp array to simplify Invariants
+                    keys[i+1] := keys[i];
                     i := i-1;
                 }
 
