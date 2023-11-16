@@ -457,19 +457,58 @@ class BPTree {
     
         return parent;
     }
-
     
     method Find(val: int) returns (inTree: bool)
         requires Valid()
         ensures root == null ==> inTree == false
-        ensures root != null ==> ( ValInSubTree(this.root, val) ==> inTree == true )
-        ensures root != null ==> ( !ValInSubTree(this.root, val) ==> inTree == false ) 
+        ensures root != null ==> (root.ContainsVal(val) <==> inTree)
         ensures Valid()
     {
         if root == null { return false; }
         else { inTree := FindHelper(root, val); }
     }
     
+    static method FindHelper(node: BPTNode, val: int) returns (inTree: bool)
+        requires node.Valid()
+        ensures node.ContainsVal(val) <==> inTree
+        decreases node.Repr
+    {        
+        if node.keyNum == 0 {return false;}
+        if node.isLeaf == true {
+            var keyNum := node.keyNum;
+            var i := 0;
+            while i< keyNum
+                invariant forall j: int :: 0 <= j < i<= keyNum ==> node.keys[j] != val
+                invariant 0 <= i <= keyNum
+            {
+                if node.keys[i] == val {return true;}
+                i := i+1;
+            }
+            return false;
+        }
+        ghost var IgnContents : set<int> := {};
+        var i := 0;
+        while i < node.keyNum+1 
+            invariant 0 <= i <= node.keyNum+1 
+            invariant forall j : int :: 0 <= j < i ==> (!node.children[j].ContainsVal(val))
+            invariant !(val in IgnContents)
+        {
+            if node.children[i] is BPTNode {
+                var tmp := FindHelper(node.children[i], val);
+                if tmp {return true;} 
+                IgnContents := IgnContents + node.children[i].Contents;
+            }
+            i := i+1;
+        }
+        return false;
+    }
+    // assert forall j : int :: 0 <= j < node.keyNum+1 ==> (!ValInSubTree(node.children[j], val));
+    // assert !(val in IgnContents); 
+    // // assert IgnContents == node.SumOfChildContents(node.children[0..node.keyNum+1]);
+    // // assert IgnContents >= node.Cokntents;
+    // assert (!ValInSubTree(node, val));
+
+
 
 //     static method FindHelper(node: BPTNode, val: int) returns (inTree: bool)
 //         requires node.Valid()
@@ -557,48 +596,6 @@ class BPTree {
 //         }
 
 //     } 
-    static method FindHelper(node: BPTNode, val: int) returns (inTree: bool)
-        requires node.Valid()
-        // ensures node.Empty() ==> inTree == false
-        // ensures ( !node.Empty() && !ValInSubTree(node, val) ) ==> inTree == false  
-        // ensures ( !node.Empty() && ValInSubTree(node, val) ) ==> inTree == true
-        ensures (ValInSubTree(node, val) ) ==> inTree == true
-        ensures (!ValInSubTree(node, val) ) ==> inTree == false  
-        decreases node.Repr
-    {        
-
-        if node.keyNum == 0 {return false;}
-        if node.isLeaf == true {
-            var keyNum := node.keyNum;
-            var i := 0;
-            while i< keyNum
-                invariant forall j: int :: 0 <= j < i<= keyNum ==> node.keys[j] != val
-                invariant 0 <= i <= keyNum
-            {
-                if node.keys[i] == val {
-                    return true;
-                }
-                i := i+1;
-            }
-            return false;
-        }
-        var i := 0;
-        while i < node.keyNum+1 
-            invariant 0 <= i <= node.keyNum+1 
-            invariant forall j : int :: 0 <= j < i ==> (!ValInSubTree(node.children[j], val))
-            invariant node.Valid()
-        {
-            if node.children[i] is BPTNode {
-                var tmp := FindHelper(node.children[i], val);
-                if tmp {return true;} 
-            }
-            i := i+1;
-        }
-        assert forall j : int :: 0 <= j < node.keyNum+1 ==> (!ValInSubTree(node.children[j], val));
-        assume (!ValInSubTree(node, val));
-        return false;
-    }
-
 
 // static method FindHelper(node: BPTNode, val: int) returns (inTree: bool)
 //         requires node.Valid()
