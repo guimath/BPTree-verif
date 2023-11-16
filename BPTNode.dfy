@@ -252,6 +252,11 @@ class BPTNode {
         keyNum < ORDER
     }
     
+    ghost predicate ContainsVal(val: int) 
+        reads this
+    {
+        val in Contents
+    }
 
     method GetInsertIndex(key:int) returns (idx:int)
         requires Valid()
