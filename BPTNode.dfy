@@ -76,6 +76,7 @@ class BPTNode {
         Sorted()&&
         LeavesHeightEq() && 
         (isLeaf==false ==> (
+            nextLeaf == null &&
             ChildNum() &&
             ChildrenInRepr() &&
             ChildHeightEq() &&
@@ -414,6 +415,7 @@ class BPTNode {
         keys := new int[ORDER][0, 0, 0, 0, 0];
         Contents := {};
         Repr := {this} + {keys} + {children}; 
+        nextLeaf := null;
         
         // Hardcoded rather than loop because weird error :
         // "in the first division of the constructor body (before 'new;'), 
