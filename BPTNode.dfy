@@ -32,16 +32,17 @@ class BPTNode {
         LengthOk() &&
         ( keyNum == 0 ==> Empty() ) &&
         // ( keyNum > 0 ==> !Empty() ) &&
-        Sorted()&&
-        LeavesHeightEq() && 
         KeysInRepr() &&
         KeysInContents() &&
+        Sorted()&&
+        LeavesHeightEq() && 
         (isLeaf==false ==> (
             ChildNum() &&
             ChildrenInRepr() &&
             ChildHeightEq() &&
             Hierarchy() &&
             NonCyclical() &&
+            ChildrenContentsDisjoint() &&
             (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
                 children[i].keys in Repr && 
                 children[i].children in Repr && 
@@ -63,6 +64,7 @@ class BPTNode {
         LengthOk() &&
         ( keyNum == 0 ==> Empty() ) &&
         // ( keyNum > 0 ==> !Empty() ) &&
+        KeysInRepr() &&
         Sorted()&&
         LeavesHeightEq() && 
         (isLeaf==false ==> (
@@ -92,13 +94,43 @@ class BPTNode {
         else childrenSeq[0].Contents + SumOfChildContents(childrenSeq[1..])
     }
 
+        ghost function SumOfChildrenContents(start: int, end: int): set<int>
+        reads this, Repr, children, keys
+        requires isLeaf == false
+        requires LengthOk()
+        requires ChildNum()
+        requires ChildrenInRepr()
+        requires 0 <= start 
+        requires end <= keyNum + 1
+        decreases end - start
+    {
+        if start >= end then {}
+        else if start > keyNum then {}
+            else children[start].Contents + SumOfChildrenContents(start+1, end)
+    }
+
+    ghost predicate ChildrenContentsDisjoint() 
+        reads this, Repr, children, keys
+        requires isLeaf==false
+        requires LengthOk()
+        requires ChildNum()
+        requires ChildrenInRepr()
+    {
+        forall i:int :: 0 <= i < keyNum ==> (
+            forall j: int :: i < j <= keyNum ==> (
+                children[i].Contents !! children[j].Contents
+            )
+        )
+    }
+
     // ################ For all nodes ################
     // - MinKeys : must contain at least floor(n/2) keys.
     
     ghost predicate Sorted()
         //keys are Sorted from left two right
-        reads this, keys, children
+        reads this, Repr
         requires LengthOk()
+        requires KeysInRepr()
     {
         forall i: int :: 0 <= i < keyNum-1 ==> (
             keys[i] < keys[i+1]
