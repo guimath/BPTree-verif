@@ -12,6 +12,8 @@ class BPTNode {
     var height: int
     // is leaf
     var isLeaf: bool 
+    // pointer towards next leaf
+    var nextLeaf : BPTNode?
 
     // TODO we haven't added pointers to leafs for next leaf. Adding it to children array on keyNum position as we discussed may cause some problems. 
     // It may be okay because in Valid() we have if isLeaf == false some predicates, but if it causes problems I am okay with adding it as a separate variable.
@@ -21,6 +23,12 @@ class BPTNode {
     // ghost set for verifivation
     ghost var Contents: set<int>  
     ghost var Repr: set<object>
+
+    ghost predicate HalfFull()
+        reads this, keys
+    {
+        keyNum > ORDER/2
+    }
 
     ghost predicate Valid()
         reads this, children, keys, Repr
@@ -37,6 +45,7 @@ class BPTNode {
         Sorted()&&
         LeavesHeightEq() && 
         (isLeaf==false ==> (
+            nextLeaf == null &&
             ChildNum() &&
             ChildrenInRepr() &&
             ChildHeightEq() &&

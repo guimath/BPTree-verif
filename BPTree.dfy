@@ -4,6 +4,7 @@ class BPTree {
     var root: BPTNode?
 
     // ghost set for verifivation
+    ghost var LeavesList: seq<BPTNode> 
     ghost var Contents: set<int> 
     ghost var Repr: set<object> // maybe change to object, for now I think I will just have nodes in it, not this (Tree)
 
@@ -59,14 +60,16 @@ class BPTree {
         assume Valid();
     }
 
-    method SplitNode(current:BPTNode, val:int) returns(newNode:BPTNode)
+    method SplitLeaf(current:BPTNode, val:int) returns(newNode:BPTNode)
         modifies current, current.children, current.keys
         requires current.Valid()
         requires !(val in current.Contents)
-        ensures newNode.Valid()
-        ensures current.Valid()
-        ensures current.keyNum > 0
-        ensures current.keys[current.keyNum-1] < newNode.keys[0]
+        // ensures newNode.Valid()
+        // ensures current.Valid()
+        // ensures current.keyNum > 0
+        // ensures current.keys[current.keyNum-1] < newNode.keys[0]
+        // ensures old(current.Content) < (current.Content + newNode.Content)
+        // ensures val in (current.Content + newNode.Content)
     {
         newNode := new BPTNode.Init();
         var temp := new int[ORDER + 1]; // storing all keys and the new value in temporary list
@@ -950,12 +953,18 @@ class BPTree {
 
     } */
 
-    ghost static predicate ValInSubTree(node: BPTNode, val: int) 
-        reads node
+    
+    ghost predicate LeavesValid()
+        reads this, Repr, LeavesList
+        requires root != null
     {
-        val in node.Contents
-    }
-
+        // all leaves are in ghost var
+        (forall leaf :: (leaf in Repr) && (leaf is BPTNode) && leaf.isLeaf ==> leaf in LeavesList)&&
+        // all leaves are pointing towards the next 
+        (forall j :int :: 0 <= j < |LeavesList|-1 ==> LeavesList[j].nextLeaf ==  LeavesList[j+1]) &&
+        // all keys in Content are in the Leaves List contents
+        (forall key :: key in Contents ==>  key in root.SumOfChildContents(LeavesList))
+    }    
 
     ghost predicate Valid()
     reads * // TODO see if possible to reduce
@@ -964,7 +973,11 @@ class BPTree {
         (root != null ==> 
             root in Repr && root.Repr <= Repr && // TODO maybe root.Repr == Repr (depends if we put this in Repr)
             root.Valid() &&
-            Contents == root.Contents)
+            Contents == root.Contents) &&
+            root is BPTNode &&
+            (!root.isLeaf ==> 
+                forall i : int :: 0<= i < root.keyNum ==> root.children[i].HalfFull())&&
+            LeavesValid()
     } // TODO maybe add sth like it contains all values in leaf nodes (which you can iterate through using leaf pointers)
 
 }
