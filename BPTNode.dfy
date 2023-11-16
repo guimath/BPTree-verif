@@ -82,12 +82,14 @@ class BPTNode {
         )) 
     }
 
-    ghost function SumOfChildContents(children: seq<BPTNode>): set<int>
-        reads children 
-        decreases |children|
+    ghost function SumOfChildContents(childrenSeq: seq<BPTNode>): set<int>
+        reads childrenSeq
+        decreases |childrenSeq|
+        ensures |childrenSeq| > 0 ==> 
+            SumOfChildContents(childrenSeq) == childrenSeq[0].Contents + SumOfChildContents(childrenSeq[1..])
     {
-        if children == [] then {}
-        else children[0].Contents + SumOfChildContents(children[1..])
+        if childrenSeq == [] then {}
+        else childrenSeq[0].Contents + SumOfChildContents(childrenSeq[1..])
     }
 
     // ################ For all nodes ################
