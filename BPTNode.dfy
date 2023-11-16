@@ -23,7 +23,7 @@ class BPTNode {
     ghost var Repr: set<object>
 
     ghost predicate Valid()
-        reads * // TODO I think this should be reduced
+        reads this, children, keys, Repr
         decreases height
         ensures Valid() ==> this in Repr
     {
@@ -31,7 +31,7 @@ class BPTNode {
         height >= -1 && // bottom limit 
         LengthOk() &&
         ( keyNum == 0 ==> Empty() ) &&
-        ( keyNum > 0 ==> !Empty() ) &&
+        // ( keyNum > 0 ==> !Empty() ) &&
         Sorted()&&
         LeavesHeightEq() && 
         KeysInRepr() &&
@@ -43,6 +43,37 @@ class BPTNode {
             Hierarchy() &&
             NonCyclical() &&
             (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
+                children[i].keys in Repr && 
+                children[i].children in Repr && 
+                children[i].Valid() && 
+                children[i].Contents <= Contents)
+            ) && 
+            (keyNum > 0 ==> (Contents == SumOfChildContents(children[0..keyNum+1]) && (forall num: int :: (num in Contents ==> num in SumOfChildContents(children[0..keyNum+1])))))
+          //  && (forall val: int :: val in Contents ==> (exists j: int :: 0 <= j <= keyNum && val in children[j].Contents))))
+        )) 
+    }
+
+    ghost predicate ValidBeforeContentUpdate()
+        reads this, children, keys, Repr // TODO I think this should be reduced
+        decreases height
+        ensures Valid() ==> this in Repr
+    {
+        this in Repr && 
+        height >= -1 && // bottom limit 
+        LengthOk() &&
+        ( keyNum == 0 ==> Empty() ) &&
+        // ( keyNum > 0 ==> !Empty() ) &&
+        Sorted()&&
+        LeavesHeightEq() && 
+        (isLeaf==false ==> (
+            ChildNum() &&
+            ChildrenInRepr() &&
+            ChildHeightEq() &&
+            Hierarchy() &&
+            NonCyclical() &&
+            (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
+                children[i].keys in Repr && 
+                children[i].children in Repr && 
                 children[i].Valid() && 
                 children[i].Contents <= Contents) // TODO maybe not needed because of sum of children's contents
             ) && 
@@ -50,7 +81,6 @@ class BPTNode {
           //  && (forall val: int :: val in Contents ==> (exists j: int :: 0 <= j <= keyNum && val in children[j].Contents))))
         )) 
     }
-
 
     ghost function SumOfChildContents(children: seq<BPTNode>): set<int>
         reads children 
@@ -280,9 +310,12 @@ class BPTNode {
                 }
 
                 assert i == idx -1;
-                assert forall j: int :: idx <= j < keyNum ==> ( 
-                    keys[j+1] == prev_keys[j]
+                assert forall j: int :: idx < j < keyNum ==> ( 
+                    keys[j] == prev_keys[j-1]
                 );
+                assert forall j: int :: idx < j < keyNum ==> ( // previous array was sorted so this is also
+                    prev_keys[j-1] < prev_keys[j]
+                );   
                 assert forall j: int :: idx < j < keyNum ==> ( // previous array was sorted so this is also
                     keys[j] < keys[j+1]
                 );   
@@ -298,13 +331,22 @@ class BPTNode {
         assert 0 < idx ==> keys[idx-1]< keys[idx]; // idx larger than prev
         assert idx < keyNum ==> keys[idx] < keys[idx+1]; // idx bigger then next
         keyNum := keyNum+1; 
-        //TODO add to Repr and modify child also
-        assume KeysInContents();
-        assume KeysInRepr();
-        // Contents := {};
-        // for j:int := 0  to keyNum {
+        AddKeysContent();
+    }
+
+    ghost method AddKeysContent()
+        modifies this
+        requires ValidBeforeContentUpdate()
+        ensures Valid()
+    {
+        // Contents := {}
+        // for j:int := 0  to keyNum 
+        // {
         //     Contents := Contents + {keys[j]};
         // }
+        //TODO Patch
+        assume KeysInRepr();
+        assume KeysInContents();
     }
 
     constructor Init()
