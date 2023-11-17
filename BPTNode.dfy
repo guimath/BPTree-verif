@@ -438,22 +438,11 @@ class BPTNode {
         isLeaf := true;
         height := -1;
         keyNum := 0;
-        children := new BPTNode?[ORDER + 1][null, null, null, null, null, null];
-        keys := new int[ORDER][0, 0, 0, 0, 0];
+        children := new BPTNode?[ORDER + 1](i => null);
+        keys := new int[ORDER](i => 0);
         Contents := {};
         Repr := {this} + {keys} + {children}; 
         nextLeaf := null;
-        
-        // Hardcoded rather than loop because weird error :
-        // "in the first division of the constructor body (before 'new;'), 
-        // 'this' can only be used to assign to its fields"
-        // When running this loop
-        // for i := 0 to ORDER - 1 {
-        //     keys[i] := 0;
-        //     children[i] := null;
-        // }
-        // children[ORDER] := null;
-
     }
 
 }
