@@ -14,7 +14,7 @@ class BPTree {
         ensures Contents == {}
     { 
         root := null;
-        Repr := {};
+        Repr := {}; // TODO maybe we should add this in Repr
         Contents := {};
     } 
 
@@ -59,9 +59,9 @@ class BPTree {
 
         current.keyNum := (ORDER + 1) / 2;
         newNode.keyNum := (ORDER + 1) - (ORDER + 1) / 2;
-        // pointers rearrangement
-        newNode.nextLeaf := current.nextLeaf;
-        current.nextLeaf := newNode;
+        // pointers rearrangement -> adding this causes timeout when verifying 
+    //    newNode.nextLeaf := current.nextLeaf;
+    //    current.nextLeaf := newNode;
 
         for i := 0 to current.keyNum - 1 
             modifies current.keys
@@ -75,11 +75,19 @@ class BPTree {
         for i := 0 to newNode.keyNum - 1 
             modifies newNode.keys
             {newNode.keys[i] := temp[offset+i];}
+        
+        current.Contents := {};
+        for i := 0 to current.keyNum {
+            current.Contents := current.Contents + {current.keys[i]};
+        }
+        for i := 0 to newNode.keyNum {
+            newNode.Contents := newNode.Contents + {newNode.keys[i]};
+        }
     }
 
     
     // this is at least 3rd version of insert, but having constant trouble with iterating through arrays and modifying them and showing that they keep the sorted properties, often getting timeout
-   
+/*   
     method Insert(val: int)
         requires Valid()
         modifies Repr    
@@ -93,9 +101,9 @@ class BPTree {
         Contents := root.Contents;
         Repr := root.Repr + {this}; // completely updating the Repr, not using old one
     }
+*/
 
-
-
+/*
     static method InsertHelper(parent:BPTNode?, node:BPTNode?, x:int) returns (newNode:BPTNode, updateParent:bool)
         requires (node!=null && parent!=null) ==> (node in parent.Repr&& parent.height == node.height+1 && parent !in node.Repr)
         requires node == null || (node.Valid())
@@ -348,7 +356,7 @@ class BPTree {
         } */
 
     }
-
+*/
     
     // COMMENT
     // not optimized version of Find, checks all children, not just the child in which the value should be
