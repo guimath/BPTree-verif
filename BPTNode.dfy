@@ -149,13 +149,11 @@ class BPTNode {
         reads this, keys
         requires LengthOk()
     {
-        (forall i: int :: 0 <= i < keyNum-1 ==> (
-            keys[i] < keys[i+1]
-        )) && 
-        (forall i: int :: 0 <= i < keyNum-1 ==> ( // additional condition to help compiler
-            keys[i] < keys[keyNum-1]
-        )) 
+        (forall i,j :: 0<= i< j < keyNum ==> (
+            keys[i] < keys[j]
+        ))
     }
+
     ghost predicate LeavesHeightEq()
         // all leaves are at the same distance from the root (always -1).
         reads this
@@ -350,6 +348,7 @@ class BPTNode {
         requires key > 0
         modifies this, keys
         ensures Valid()
+        ensures ContainsVal(key)
     {
         var idx := GetInsertIndex(key);
         ghost var prev_keys := keys[..];
@@ -434,6 +433,7 @@ class BPTNode {
         ensures Valid() 
         ensures fresh(Repr - {this})
         ensures Contents == {}
+        ensures nextLeaf == null
     {
         isLeaf := true;
         height := -1;
