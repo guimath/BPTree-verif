@@ -61,14 +61,15 @@ class BPTNode {
         this in Repr && 
         height >= -1 && // bottom limit 
         LengthOk() &&
+        children in Repr &&
         ( keyNum == 0 ==> Empty() ) &&
         // ( keyNum > 0 ==> !Empty() ) &&
         Sorted()&&
         LeavesHeightEq() && 
         (isLeaf==false ==> (
             nextLeaf == null &&
-            ChildNum() &&
             ChildrenInRepr() &&
+            ChildNum() &&
             ChildHeightEq() &&
             Hierarchy() &&
             NonCyclical() &&
