@@ -19,19 +19,20 @@ class BPTNode {
     ghost var Contents: set<int>  
     ghost var Repr: set<object>
 
+        // ( keyNum > 0 ==> !Empty() ) &&
     ghost predicate Valid()
         reads this, Repr
         decreases height
         ensures Valid() ==> this in Repr
     {
         this in Repr && 
-        height >= -1 && // bottom limit 
+        height >= -1 &&
         LengthOk() &&
         KeysInRepr() &&
         KeysInContents() &&
         children in Repr &&
         ( keyNum == 0 ==> Empty() ) &&
-        // ( keyNum > 0 ==> !Empty() ) &&
+        KeyNumOK()&&
         Sorted()&&
         LeavesHeightEq() && 
         (isLeaf==false ==> (
@@ -42,28 +43,31 @@ class BPTNode {
             Hierarchy() &&
             NonCyclical() &&
             ChildrenContentsDisjoint() &&
-            (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
+            (forall i: int :: 0 <= i < keyNum+1 ==> ( 
                 children[i].keys in Repr && 
                 children[i].children in Repr && 
                 children[i].Valid() && 
                 children[i].Contents <= Contents)
             ) && 
-            (keyNum > 0 ==> (Contents == SumOfChildContents(children[0..keyNum+1]) && (forall num: int :: (num in Contents ==> num in SumOfChildContents(children[0..keyNum+1])))))
-          //  && (forall val: int :: val in Contents ==> (exists j: int :: 0 <= j <= keyNum && val in children[j].Contents))))
+            (keyNum > 0 ==> (
+                Contents == SumOfChildContents(children[0..keyNum+1]) && 
+                (forall num: int :: (num in Contents ==> num in SumOfChildContents(children[0..keyNum+1])))
+            ))
         )) 
     }
 
+          //  && (forall val: int :: val in Contents ==> (exists j: int :: 0 <= j <= keyNum && val in children[j].Contents))))
     ghost predicate ValidBeforeContentUpdate()
         reads this, children, keys, Repr
         decreases height
         // ensures Valid() ==> this in Repr
     {
         this in Repr && 
-        height >= -1 && // bottom limit 
+        height >= -1 &&
         LengthOk() &&
         children in Repr &&
         ( keyNum == 0 ==> Empty() ) &&
-        // ( keyNum > 0 ==> !Empty() ) &&
+        KeyNumOK()&&
         Sorted()&&
         LeavesHeightEq() && 
         (isLeaf==false ==> (
@@ -74,14 +78,16 @@ class BPTNode {
             Hierarchy() &&
             NonCyclical() &&
             ChildrenContentsDisjoint() &&
-            (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
+            (forall i: int :: 0 <= i < keyNum+1 ==> ( 
                 children[i].keys in Repr && 
                 children[i].children in Repr && 
                 children[i].Valid() && 
-                children[i].Contents <= Contents) // TODO maybe not needed because of sum of children's contents
+                children[i].Contents <= Contents)
             ) && 
-            (keyNum > 0 ==> (Contents == SumOfChildContents(children[0..keyNum+1]) && (forall num: int :: (num in Contents ==> num in SumOfChildContents(children[0..keyNum+1])))))
-          //  && (forall val: int :: val in Contents ==> (exists j: int :: 0 <= j <= keyNum && val in children[j].Contents))))
+            (keyNum > 0 ==> (
+                Contents == SumOfChildContents(children[0..keyNum+1]) && 
+                (forall num: int :: (num in Contents ==> num in SumOfChildContents(children[0..keyNum+1])))
+            ))
         )) 
     }
 
@@ -143,9 +149,12 @@ class BPTNode {
         reads this, keys
         requires LengthOk()
     {
-        forall i: int :: 0 <= i < keyNum-1 ==> (
+        (forall i: int :: 0 <= i < keyNum-1 ==> (
             keys[i] < keys[i+1]
-        )
+        )) && 
+        (forall i: int :: 0 <= i < keyNum-1 ==> ( // additional condition to help compiler
+            keys[i] < keys[keyNum-1]
+        )) 
     }
     ghost predicate LeavesHeightEq()
         // all leaves are at the same distance from the root (always -1).
@@ -154,7 +163,22 @@ class BPTNode {
         isLeaf <==> height==-1
     }
 
+    ghost predicate KeyNumOK()
+        // contains one more child than it has keys. 
+        reads this, Repr, keys, children
+        requires LengthOk()
+    {
+        // enough values
+        (forall i: int :: 0 <= i < keyNum ==> (
+            keys[i] > 0
+        )) &&
+        // no more values
+        (forall i: int :: keyNum <= i < ORDER ==> (
+            keys[i] == 0
+        ))
+    }
     // ################ For internal nodes ################
+
     ghost predicate ChildNum()
         // contains one more child than it has keys. 
         reads this, Repr, keys, children
@@ -162,15 +186,11 @@ class BPTNode {
         requires LengthOk()
     {
         // enough values
-        (forall i: int :: 0 <= i < keyNum ==> (
-            keys[i] > 0 && 
+        (forall i: int :: 0 <= i <= keyNum ==> (
             children[i] is BPTNode
         )) &&
-        children[keyNum] is BPTNode &&
         // no more values
-        (keyNum < ORDER ==> keys[keyNum] == 0) &&
-        (forall i: int :: keyNum < i < ORDER ==> (
-            keys[i] == 0 && 
+        (forall i: int :: keyNum < i <= ORDER ==> (
             children[i] == null
         ))
     }
@@ -327,6 +347,7 @@ class BPTNode {
         requires isLeaf == true 
         requires NotFull() 
         requires !(key in Contents)
+        requires key > 0
         modifies this, keys
         ensures Valid()
     {
@@ -354,6 +375,9 @@ class BPTNode {
                     )   
                     invariant forall j: int :: i < j < keyNum ==> ( // end : i = idx -1 
                         keys[j+1] == prev_keys[j]
+                    )  
+                    invariant forall j: int :: keyNum < j < ORDER ==> ( // end : i = idx -1 
+                        keys[j] == 0
                     )  
                 {
                     keys[i+1] := keys[i];
