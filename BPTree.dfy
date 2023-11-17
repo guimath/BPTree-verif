@@ -224,7 +224,9 @@ class BPTree {
                 }
             }
         
-        } /* else {
+        } 
+    } 
+            /* else {
             assert node.isLeaf == false && node.Valid();
             var updateNode := false;
             var i := 0;
@@ -347,7 +349,7 @@ class BPTree {
             } 
         } */
 
-    }
+    // }
 
     
     // COMMENT
@@ -361,14 +363,14 @@ class BPTree {
         if root == null { return false; }
         else { inTree := FindHelper(root, val); }
     }
-    
+     
     static method FindHelper(node: BPTNode, val: int) returns (inTree: bool) // verifies correct in under 100 seconds
         requires node.Valid()
         ensures node.ContainsVal(val) <==> inTree
         decreases node.Repr
     {        
         if node.keyNum == 0 {return false;}
-        if node.isLeaf == true {
+        if node.isLeaf == true { 
             var keyNum := node.keyNum;
             var i := 0;
             while i< keyNum
@@ -390,7 +392,8 @@ class BPTree {
             if node.children[i] is BPTNode {
                 var tmp := FindHelper(node.children[i], val);
                 if tmp {return true;} 
-                IgnContents := IgnContents + node.children[i].Contents;
+                //IGn is set of keys that are in children but are different to val
+                IgnContents := IgnContents + node.children[i].Contents; 
             }
             i := i+1;
         }
@@ -598,7 +601,16 @@ class BPTree {
 
     } */
 
-    
+    ghost predicate HalfKeys()
+        reads this, root, Repr
+        requires root is BPTNode
+        requires root in Repr && root.Repr <= Repr
+        requires root.Valid() 
+    {
+        (!root.isLeaf ==> 
+            forall i : int :: 0<= i < root.keyNum ==> root.children[i].HalfFull())
+    }
+
     ghost predicate LeavesValid()
         reads this, Repr, LeavesList
         requires root != null
@@ -620,8 +632,7 @@ class BPTree {
             root.Valid() &&
             Contents == root.Contents &&
             root is BPTNode &&
-            (!root.isLeaf ==> 
-                forall i : int :: 0<= i < root.keyNum ==> root.children[i].HalfFull())&&
+            HalfKeys()&&
             LeavesValid()
         )
     }
