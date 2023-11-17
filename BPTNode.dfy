@@ -85,9 +85,12 @@ class BPTNode {
     }
 
     ghost predicate HalfFull()
-        reads this, keys
+        reads this, Repr
+        requires Valid()
     {
-        keyNum > ORDER/2
+        keyNum > ORDER/2 &&
+        isLeaf == false ==>
+            forall i:int :: 0<= i < keyNum ==> children[i].HalfFull()
     }
 
     //sequence version
