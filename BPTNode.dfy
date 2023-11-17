@@ -15,43 +15,33 @@ class BPTNode {
     // pointer towards next leaf
     var nextLeaf : BPTNode?
 
-    // TODO we haven't added pointers to leafs for next leaf. Adding it to children array on keyNum position as we discussed may cause some problems. 
-    // It may be okay because in Valid() we have if isLeaf == false some predicates, but if it causes problems I am okay with adding it as a separate variable.
-    // ==> check commented LeafConnected()
-    // TODO we also need to add predicates that each leaf has 1 pointer towards BPTNode whose keys have greater values (sth like sorted).
-
     // ghost set for verifivation
     ghost var Contents: set<int>  
     ghost var Repr: set<object>
 
-    ghost predicate HalfFull()
-        reads this, keys
-    {
-        keyNum > ORDER/2
-    }
-
     ghost predicate Valid()
-        reads this, children, keys, Repr
+        reads this, Repr
         decreases height
         ensures Valid() ==> this in Repr
     {
         this in Repr && 
         height >= -1 && // bottom limit 
         LengthOk() &&
-        ( keyNum == 0 ==> Empty() ) &&
-        // ( keyNum > 0 ==> !Empty() ) &&
         KeysInRepr() &&
         KeysInContents() &&
+        children in Repr &&
+        ( keyNum == 0 ==> Empty() ) &&
+        // ( keyNum > 0 ==> !Empty() ) &&
         Sorted()&&
         LeavesHeightEq() && 
         (isLeaf==false ==> (
             nextLeaf == null &&
-            ChildNum() &&
             ChildrenInRepr() &&
+            ChildNum() &&
             ChildHeightEq() &&
             Hierarchy() &&
             NonCyclical() &&
-            // ChildrenContentsDisjoint() &&
+            ChildrenContentsDisjoint() &&
             (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
                 children[i].keys in Repr && 
                 children[i].children in Repr && 
@@ -64,9 +54,9 @@ class BPTNode {
     }
 
     ghost predicate ValidBeforeContentUpdate()
-        reads this, children, keys, Repr // TODO I think this should be reduced
+        reads this, children, keys, Repr
         decreases height
-        ensures Valid() ==> this in Repr
+        // ensures Valid() ==> this in Repr
     {
         this in Repr && 
         height >= -1 && // bottom limit 
@@ -82,7 +72,7 @@ class BPTNode {
             ChildHeightEq() &&
             Hierarchy() &&
             NonCyclical() &&
-            // ChildrenContentsDisjoint() &&
+            ChildrenContentsDisjoint() &&
             (forall i: int :: 0 <= i < keyNum+1 ==> ( // we are sure that none of the children are null (checked with ChildNum)
                 children[i].keys in Repr && 
                 children[i].children in Repr && 
@@ -94,6 +84,13 @@ class BPTNode {
         )) 
     }
 
+    ghost predicate HalfFull()
+        reads this, keys
+    {
+        keyNum > ORDER/2
+    }
+
+    //sequence version
     ghost function SumOfChildContents(childrenSeq: seq<BPTNode>): set<int>
         reads childrenSeq
         decreases |childrenSeq|
@@ -104,7 +101,8 @@ class BPTNode {
         else childrenSeq[0].Contents + SumOfChildContents(childrenSeq[1..])
     }
 
-        ghost function SumOfChildrenContents(start: int, end: int): set<int>
+    // index version
+    ghost function SumOfChildrenContents(start: int, end: int): set<int>
         reads this, Repr, children, keys
         requires isLeaf == false
         requires LengthOk()
@@ -200,11 +198,12 @@ class BPTNode {
     }
 
     ghost predicate ChildrenInRepr()
-        reads this, Repr, children, keys
+        reads this, Repr
         requires isLeaf == false
         requires LengthOk()
-        requires ChildNum()
+        // requires ChildNum()
     {
+        children in Repr &&
         forall i: int :: 0 <= i < keyNum+1 ==> ( children[i] in Repr && children[i].Repr <= Repr )
     }   
 
