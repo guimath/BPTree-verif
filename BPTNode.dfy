@@ -2,18 +2,18 @@
 const ORDER:int := 5
 
 class BPTNode {
-    // array of length ORDER
     var keys: array<int>
-    // array of length ORDER + 1
+    // array of length ORDER
     var children: array<BPTNode?>
-    // number of keys active
+    // array of length ORDER + 1
     var keyNum: int
-    // height
+    // number of active keys 
     var height: int
-    // is leaf
+    // height
     var isLeaf: bool 
-    // pointer towards next leaf
+    // wether node is a leaf
     var nextLeaf : BPTNode?
+    // pointer towards next leaf
 
     // ghost set for verifivation
     ghost var Contents: set<int>  
@@ -90,8 +90,12 @@ class BPTNode {
             ))
         )) 
     }
+    // ************************************************ //
+    // ************** ORDERED PREDICATES ************** //
+    // ************************************************ //
 
     ghost predicate HalfFull()
+        // if not root, all nodes in subtree contains more than ORDER/2 keys
         reads this, Repr
         requires Valid()
     {
@@ -100,69 +104,8 @@ class BPTNode {
             forall i:int :: 0<= i < keyNum ==> children[i].HalfFull()
     }
 
-    //sequence version
-    ghost function SumOfChildContents(childrenSeq: seq<BPTNode>): set<int>
-        reads childrenSeq
-        decreases |childrenSeq|
-        ensures |childrenSeq| > 0 ==> 
-            SumOfChildContents(childrenSeq) == childrenSeq[0].Contents + SumOfChildContents(childrenSeq[1..])
-    {
-        if childrenSeq == [] then {}
-        else childrenSeq[0].Contents + SumOfChildContents(childrenSeq[1..])
-    }
-
-    // index version
-    ghost function SumOfChildrenContents(start: int, end: int): set<int>
-        reads this, Repr, children, keys
-        requires isLeaf == false
-        requires LengthOk()
-        requires ChildNum()
-        requires ChildrenInRepr()
-        requires 0 <= start 
-        requires end <= keyNum + 1
-        decreases end - start
-    {
-        if start >= end then {}
-        else if start > keyNum then {}
-            else children[start].Contents + SumOfChildrenContents(start+1, end)
-    }
-
-    ghost predicate ChildrenContentsDisjoint() 
-        reads this, Repr, children, keys
-        requires isLeaf==false
-        requires LengthOk()
-        requires ChildNum()
-        requires ChildrenInRepr()
-    {
-        forall i:int :: 0 <= i < keyNum ==> (
-            forall j: int :: i < j <= keyNum ==> (
-                children[i].Contents !! children[j].Contents
-            )
-        )
-    }
-
-    // ################ For all nodes ################
-    // - MinKeys : must contain at least floor(n/2) keys.
-    
-    ghost predicate Sorted()
-        //keys are Sorted from left two right
-        reads this, keys
-        requires LengthOk()
-    {
-        (forall i,j :: 0<= i< j < keyNum ==> (
-            keys[i] < keys[j]
-        ))
-    }
-
-    ghost predicate LeavesHeightEq()
-        // all leaves are at the same distance from the root (always -1).
-        reads this
-    {
-        isLeaf <==> height==-1
-    }
-
     ghost predicate KeyNumOK()
-        // contains one more child than it has keys. 
+        // contains exactly keyNum keys 
         reads this, Repr, keys, children
         requires LengthOk()
     {
@@ -175,10 +118,9 @@ class BPTNode {
             keys[i] == 0
         ))
     }
-    // ################ For internal nodes ################
 
     ghost predicate ChildNum()
-        // contains one more child than it has keys. 
+        // contains one more child than it has keys (keyNum +1). 
         reads this, Repr, keys, children
         requires isLeaf==false
         requires LengthOk()
@@ -193,21 +135,12 @@ class BPTNode {
         ))
     }
 
-    ghost predicate NonCyclical()
-        // no node can be contain cyclical link   
-        reads this, Repr, children, keys
-        requires isLeaf==false
-        requires LengthOk()
-        requires ChildNum()
-        requires ChildrenInRepr()
-    {
-        (forall i: int :: 0 <= i < keyNum+1 ==> (
-            this !in children[i].Repr
-        ))
-    }
+    // ************************************************ //
+    // ************** BALANCED PREDICATES ************* //
+    // ************************************************ //
 
     ghost predicate ChildHeightEq()
-        // all subtrees must be the same height. 
+        // all children must be the same height. 
         reads this, Repr, children, keys
         requires isLeaf==false
         requires LengthOk()
@@ -219,36 +152,16 @@ class BPTNode {
         ))
     }
 
-    ghost predicate ChildrenInRepr()
-        reads this, Repr
-        requires isLeaf == false
-        requires LengthOk()
-        // requires ChildNum()
+    ghost predicate LeavesHeightEq()
+        // all leaves are at the same distance from the root (always -1).
+        reads this
     {
-        children in Repr &&
-        forall i: int :: 0 <= i < keyNum+1 ==> ( children[i] in Repr && children[i].Repr <= Repr )
-    }   
-
-    ghost predicate KeysInRepr()
-        reads this, Repr
-        requires LengthOk()
-    {
-        keys in Repr
-    } 
-
-    ghost predicate KeysInContents()
-        reads this, Repr
-        requires LengthOk()
-        requires KeysInRepr()
-    {
-        (isLeaf == true ==> (
-            |Contents| == keyNum && 
-            (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
-        )) &&
-        forall i : int :: 0 <= i < keyNum ==> (
-            keys[i] in Contents
-        )
+        isLeaf <==> height==-1
     }
+
+    // ************************************************ //
+    // ************* ALIGNEMENT PREDICATES ************ //
+    // ************************************************ //
 
     ghost predicate Hierarchy()
         // all keys in a given subtree are bounded by surrounding keys in parent node.
@@ -266,26 +179,20 @@ class BPTNode {
         )
     }
 
- /*   PROBLEM WITH THIS: cannot read children[i].isLeaf beacuse it is not in Repr. I do not want to add it to Repr because then I lose nice properties
-      ==> this is why could be better to add this as a separate variable
-    ghost predicate LeafConnected()
-        reads this, Repr, children
+    ghost predicate Sorted()
+        //keys are Sorted from left two right
+        reads this, keys
         requires LengthOk()
-        requires isLeaf==true
     {
-        forall i: int :: 0 <= i < ORDER ==> (
-            (i == keyNum ==> (children[i] != null ==> (children[i] is BPTNode && children[i].isLeaf == true ))) &&
-            (i != keyNum ==> children[i] == null)
-        )
-    } */
+        (forall i,j :: 0<= i< j < keyNum ==> (
+            keys[i] < keys[j]
+        ))
+    }
 
-    // ################ for leaves ################
+    // ************************************************ //
+    // *************** HELPER PREDICATES ************** //
+    // ************************************************ //
 
-    // - LinkedLeaves : contains extra pointer towards the next leaf.
-    // - AllKeysInLeaves : all keys appear in a leaf node.
-
-
-    // ################ generic ################
     ghost predicate LengthOk()
         // the keys and children array are Well formed
         reads this
@@ -310,19 +217,119 @@ class BPTNode {
     }
 
     ghost predicate NotFull()
+        // not all keys are occupied
         reads this
     {
         keyNum < ORDER
     }
     
     ghost predicate ContainsVal(val: int) 
+        // val in the subtree
         reads this
     {
         val in Contents
     }
 
+
+    // ************************************************ //
+    // *************** GHOST PREDICATES *************** //
+    // ************************************************ //
+
+    ghost predicate ChildrenInRepr()
+        //children array in repr and all children Repr in Repr 
+        reads this, Repr
+        requires isLeaf == false
+        requires LengthOk()
+        // requires ChildNum()
+    {
+        children in Repr &&
+        forall i: int :: 0 <= i < keyNum+1 ==> ( children[i] in Repr && children[i].Repr <= Repr )
+    }   
+
+    ghost predicate KeysInRepr()
+        //keys array in repr
+        reads this, Repr
+        requires LengthOk()
+    {
+        keys in Repr
+    } 
+
+    ghost predicate KeysInContents()
+        // all keys in Contents and if leaf all Content are keys
+        reads this, Repr
+        requires LengthOk()
+        requires KeysInRepr()
+    {
+        (isLeaf == true ==> (
+            |Contents| == keyNum && 
+            (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
+        )) &&
+        forall i : int :: 0 <= i < keyNum ==> (
+            keys[i] in Contents
+        )
+    }
+
+    ghost predicate ChildrenContentsDisjoint() 
+        // Keys of children subtrees are disjoint
+        reads this, Repr, children, keys
+        requires isLeaf==false
+        requires LengthOk()
+        requires ChildNum()
+        requires ChildrenInRepr()
+    {
+        forall i:int :: 0 <= i < keyNum ==> (
+            forall j: int :: i < j <= keyNum ==> (
+                children[i].Contents !! children[j].Contents
+            )
+        )
+    }
+
+    ghost predicate NonCyclical()
+        // no node can be contain cyclical link   
+        reads this, Repr, children, keys
+        requires isLeaf==false
+        requires LengthOk()
+        requires ChildNum()
+        requires ChildrenInRepr()
+    {
+        (forall i: int :: 0 <= i < keyNum+1 ==> (
+            this !in children[i].Repr
+        ))
+    }
+    ghost function SumOfChildContents(childrenSeq: seq<BPTNode>): set<int>
+        //sequence version of getting all Contents of child
+        reads childrenSeq
+        decreases |childrenSeq|
+        ensures |childrenSeq| > 0 ==> 
+            SumOfChildContents(childrenSeq) == childrenSeq[0].Contents + SumOfChildContents(childrenSeq[1..])
+    {
+        if childrenSeq == [] then {}
+        else childrenSeq[0].Contents + SumOfChildContents(childrenSeq[1..])
+    }
+
+    ghost function SumOfChildrenContents(start: int, end: int): set<int>
+        // index version of getting all Contents of child
+        reads this, Repr, children, keys
+        requires isLeaf == false
+        requires LengthOk()
+        requires ChildNum()
+        requires ChildrenInRepr()
+        requires 0 <= start 
+        requires end <= keyNum + 1
+        decreases end - start
+    {
+        if start >= end then {}
+        else if start > keyNum then {}
+            else children[start].Contents + SumOfChildrenContents(start+1, end)
+    }
+
+    // ************************************************ //
+    // ******************* METHODS ******************** //
+    // ************************************************ //
+
     method GetInsertIndex(key:int) returns (idx:int)
-        requires Valid()
+        // get first index where key < keys[idx]
+        requires Valid() 
         requires !(key in Contents)
         ensures 0<= idx <= keyNum 
         ensures idx > 0 ==> keys[idx-1]< key
@@ -342,6 +349,7 @@ class BPTNode {
     }
     
     method InsertAtLeaf(key:int) 
+        // insert a key value in a node
         requires Valid()
         requires isLeaf == true 
         requires NotFull() 
@@ -410,6 +418,8 @@ class BPTNode {
     }
 
     ghost method AddKeysContent()
+        // Adds all keys to the content 
+        // only for leaves 
         modifies this
         requires ValidBeforeContentUpdate()
         ensures Valid()
