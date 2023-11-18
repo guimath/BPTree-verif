@@ -18,7 +18,9 @@ class BPTree {
         Contents := {};
     } 
 
-    // TODO newNode and current both independantly can verify the first three ensures (if you comment other part)
+    // OVERALL COMMENT: most of the functions are commented because we often get timeout. Do check comment line before each function
+
+    // COMMENT: newNode and current both independantly can verify the first three ensures (if you comment other part)
     // but if I add them both verification times out (tried with no limit, no result after ~10min)  
     static method SplitLeaf(current:BPTNode, val:int) returns(newNode:BPTNode)
         modifies current, current.Repr
@@ -131,6 +133,7 @@ class BPTree {
         // assert newNode.Valid();// independantly verified
     }
 
+    // COMMENT: splitNode does not work currently
     // // adds newnode to current node 
     // method SplitNode(current:BPTNode, child:BPTNode) returns(newNode:BPTNode)
     //     modifies current, current.Repr
@@ -203,6 +206,8 @@ class BPTree {
     //     // }
     // }  
     
+
+    // COMMENT: not even sure if we successfully verified this or got timeout
     method InsertAtNode(node:BPTNode, newNode:BPTNode) 
         requires node.Valid()
         requires newNode.Valid()
@@ -214,32 +219,32 @@ class BPTree {
         ensures (newNode in node.Repr)
     {
 
-        // var idx := node.GetInsertIndex(newNode.keys[0]);
-        // if idx < node.keyNum {
-        //     for j := node.keyNum-1 downto idx
-        //         modifies node.keys
-        //         invariant 0<= idx <= j <=   node.keyNum - 1
-        //     {
-        //         node.keys[j+1] := node.keys[j];
-        //     }
+        var idx := node.GetInsertIndex(newNode.keys[0]);
+        if idx < node.keyNum {
+            for j := node.keyNum-1 downto idx
+                modifies node.keys
+                invariant 0<= idx <= j <=   node.keyNum - 1
+            {
+                node.keys[j+1] := node.keys[j];
+            }
 
-        //     assert idx <= node.keyNum ==> (idx + 1 <= node.keyNum + 1);
-        //     for j := node.keyNum downto idx 
-        //         modifies node.children
-        //         invariant 0<= idx <= j <=   node.keyNum
-        //     {
-        //         node.children[j+1] := node.children[j];
-        //     }
-        // }
+            assert idx <= node.keyNum ==> (idx + 1 <= node.keyNum + 1);
+            for j := node.keyNum downto idx 
+                modifies node.children
+                invariant 0<= idx <= j <=   node.keyNum
+            {
+                node.children[j+1] := node.children[j];
+            }
+        }
 
-        // node.keys[idx] := newNode.keys[0];
-        // node.Contents := node.Contents + newNode.Contents;
-        // node.keyNum := node.keyNum + 1;
-        // node.children[idx + 1] := newNode;
-        // node.Repr := node.Repr + newNode.Repr;
+        node.keys[idx] := newNode.keys[0];
+        node.Contents := node.Contents + newNode.Contents;
+        node.keyNum := node.keyNum + 1;
+        node.children[idx + 1] := newNode;
+        node.Repr := node.Repr + newNode.Repr;
     }
     
-    // this is at least 3rd version of insert, but having constant trouble with iterating through arrays and modifying them and showing that they keep the sorted properties, often getting timeout
+    // COMMENT: this is who knows which version of insert, but having constant trouble with iterating through arrays and modifying them and showing that they keep the sorted properties, often getting timeout
     // method Insert(val: int)
     //     requires Valid()
     //     modifies Repr
@@ -277,6 +282,8 @@ class BPTree {
     //     assert Contents == old(Contents) + {val};
     // }
 
+
+    // COMMENT: not verifying (maybe partially)
     // new node is either new Root or a new node
     method InsertHelper(parent:BPTNode?, node:BPTNode, x:int) returns (newNode:BPTNode, updateParent:bool)
         requires (parent!=null) ==> (node in parent.Repr&& parent.height == node.height+1 && parent !in node.Repr)
@@ -370,146 +377,7 @@ class BPTree {
     }
 
 
-            // while i < node.keyNum { // find a child in which we want to insert and call recursion
-            //     if x < node.keys[i] { // TODO be careful with < and <= signs
-            //         innerNewNode, innerUpdateParent := InsertHelper(node, node.children[i], x); // newNode is children[i]
-            //         break;
-            //     }
-
-            //     if i == node.keyNum - 1 { // if the value is greater than all possible go to last child
-            //         break;
-            //     }
-            //     i := i + 1;
-            // }
-            // innerNewNode, innerUpdateParent := InsertHelper(node, node.children[idx], x);
-
-            // }
-
-            /* else {
-            assert node.isLeaf == false && node.Valid();
-            var updateNode := false;
-            var i := 0;
-            while i < node.keyNum { // find a child in which we want to insert and call recursion
-                if x < node.keys[i] { // TODO be careful with < and <= signs
-                    newNode, updateNode := InsertHelper(node, node.children[i], x); // newNode is children[i]
-                    break;
-                }
-
-                if i == node.keyNum - 1 { // if the value is greater than all possible go to last child
-                    newNode, updateNode := InsertHelper(node, node.children[i + 1], x);
-                    break;
-                }
-                i := i + 1;
-            }
-
-            // if we need to update current node (meaning its child got splitted)
-            if updateNode {
-                if node.keyNum < ORDER { // enough space in current internal node => we just add new key
-                    var i := 0;
-                    // value that we want to insert now is the first key in newly created node (== newNode)
-                    while i < node.keyNum && newNode.keys[0] > node.keys[i] 
-                        invariant 0 <= i <= node.keyNum
-                    {
-                        i := i + 1; // find right position
-                    }
-            
-                    for j := node.keyNum - 1 downto i {
-                        node.keys[j] := node.keys[j - 1];
-                    }
-
-                    assert i <= node.keyNum ==> (i + 1 <= node.keyNum + 1);
-                    for j := node.keyNum downto i + 1 {
-                        node.children[j] := node.children[j - 1];
-                    }
-                    node.keys[i] := newNode.keys[0];
-                    node.Contents := node.Contents + {newNode.keys[0]};
-                    node.keyNum := node.keyNum + 1;
-                    node.children[i + 1] := newNode;
-                    node.Repr := node.Repr + newNode.Repr;
-                    
-                } else { // internal node should also be splitted
-                    var newInternal: BPTNode := new BPTNode.Init();
-                    var tempKey := new int[ORDER + 1];
-                    var tempChildren := new BPTNode?[ORDER + 2];
-
-                    for i := 0 to ORDER {
-                        tempKey[i] := node.keys[i];
-                        tempChildren[i] := node.children[i];
-                    }
-                    tempChildren[ORDER] := node.children[ORDER];
-
-                    var i := 0;
-                    while newNode.keys[0] > tempKey[i] && i < ORDER { // in the internal node we want to insert first key of the newly created node (==newNode)
-                        i := i + 1; // finding the right position
-                    }
-
-                    for j := ORDER + 1 downto i {
-                        tempKey[j] := tempKey[j - 1]; 
-                    }
-                    tempKey[i] := x; // inserted key in its position
-                    for j := ORDER + 2 downto i {
-                        tempChildren[j] := tempChildren[j - 1];
-                    }
-                    tempChildren[i + 1] := newNode; // same for the pointers - new pointer in correct position
-
-                    newInternal.isLeaf := false;
-                    node.keyNum := (ORDER + 1) / 2; // splitting the keys
-                    newInternal.keyNum := ORDER - (ORDER + 1) / 2;
-
-                    node.Contents := {};
-                    node.Repr := {node} + {node.children} + {node.keys}; // starting fresh
-                    for i := 0 to node.keyNum {
-                        node.keys[i] := tempKey[i];
-                        node.Contents := node.Contents + {tempKey[i]}; 
-                        node.children[i] := tempChildren[i];
-                        node.Repr := node.Repr + node.children[i].Repr;
-                    }
-                    node.children[node.keyNum] := tempChildren[node.keyNum];
-                    for i := node.keyNum to ORDER - 1 {
-                        node.keys[i] := 0; 
-                    }
-
-                    var j := node.keyNum;
-                    for i := 0 to newInternal.keyNum {
-                        newInternal.keys[i] := tempKey[j];
-                        newInternal.Contents := newInternal.Contents + {tempKey[j]};
-                        j := j + 1;
-                    }
-                    j := node.keyNum + 1;
-                    for i := 0 to newInternal.keyNum + 1 {
-                        newInternal.children[i] := tempChildren[j];
-                        newInternal.Repr := newInternal.Repr + newInternal.children[i].Repr;
-                        j := j + 1;
-                    }
-
-                    if parent == null { // again, if parent does not exist (this was the root) 
-                        var newRoot := new BPTNode.Init();
-                        newRoot.keys[0] := newInternal.keys[0];
-                        newRoot.children[0] := node;
-                        newRoot.children[1] := newInternal;
-                        newRoot.isLeaf := false;
-                        newRoot.keyNum := 1;
-                        newRoot.Contents := newRoot.Contents + node.Contents + newNode.Contents;
-                        newRoot.Repr := newRoot.Repr + node.Repr + newNode.Repr; 
-
-                        newNode := newRoot;
-                    } else {
-                        updateParent := true;
-                        newNode := newInternal;
-                    }
-                }
-            } else {
-                node.Contents := {};
-                node.Repr := {node} + {node.keys} + {node.children};
-                for i := 0 to node.keyNum + 1 {
-                    node.Contents := node.Contents + node.children[i].Contents;
-                    node.Repr := node.Repr + node.children[i].Repr;
-                }
-            } 
-        } */
-
-    // COMMENT
-    // not optimized version of Find, checks all children, not just the child in which the value should be
+    // COMMENT : findHelper did verify successfully, not sure about find
     // method Find(val: int) returns (inTree: bool)
     //     requires Valid()
     //     ensures root == null ==> inTree == false
@@ -520,6 +388,8 @@ class BPTree {
     //     else { inTree := FindHelper(root, val); }
     // }
      
+
+    // COMMENT: verified successfully at some point
     method FindHelper(node: BPTNode, val: int) returns (inTree: bool) // verifies correct in under 100 seconds
         requires node.Valid()
         ensures node.ContainsVal(val) <==> inTree
@@ -586,191 +456,7 @@ class BPTree {
             return inTree; // Why success ?
         }
     }
-    // assert forall j : int :: 0 <= j < node.keyNum+1 ==> (!ValInSubTree(node.children[j], val));
-    // assert !(val in IgnContents); 
-    // // assert IgnContents == node.SumOfChildContents(node.children[0..node.keyNum+1]);
-    // // assert IgnContents >= node.Cokntents;
-    // assert (!ValInSubTree(node, val));
-
-// COMMENT:
-// This is regular version of Find where you search only in the appropriate leaf (using sorted property), 
-// but even with many tried out options for verification, we could not get this to work, probably because it seems that
-// the connection between keys and Contents is not clear to Dafny (and also that everything important is before index keyNum), even with our predicates
-   /* 
-    method Find(val: int) returns (inTree: bool)
-        requires Valid()
-        ensures root == null ==> inTree == false
-        ensures root != null ==> ( ValInSubTree(this.root, val) ==> inTree == true )
-        ensures root != null ==> ( !ValInSubTree(this.root, val) ==> inTree == false ) 
-        ensures Valid()
-    {
-        if root == null { return false; }
-        else { inTree := FindHelper(root, val); }
-    }
-    
-
-    static method FindHelper(node: BPTNode, val: int) returns (inTree: bool)
-        requires node.Valid()
-        ensures node.Empty() ==> inTree == false
-        ensures ( !node.Empty() && ValInSubTree(node, val) ) ==> inTree == true
-        ensures ( !node.Empty() && !ValInSubTree(node, val) ) ==> inTree == false  
-        decreases node.Repr
-    {        
-        if node.keyNum == 0 { 
-            return false; }
-        if node.isLeaf == true {
-            assert |node.Contents| == node.keyNum;
-            assert node.keyNum >= 1;
-            inTree := false;
-            var keyNum := node.keyNum;
-
-
-            var i := 0;
-            while i< keyNum
-                invariant forall j: int :: 0 <= j < i<= keyNum ==> node.keys[j] != val
-                invariant 0 <= i <= keyNum
-            {
-                if node.keys[i] == val {
-                    inTree := inTree || true;
-                //    assert ( node.keys[i] == val && node.KeysInContents() ) ==> val in node.Contents; // causes timeout
-                    assert ValInSubTree(node, val) == true; // && inTree == true;
-                    return;
-                }
-                i := i+1;
-            }
-            assert i == keyNum;
-    //        assert inTree == false;
-    //        assert node.keys[node.keyNum - 1] != val;
-    //        assert val !in node.keys[..node.keyNum];
-            assert forall i: int :: 0 <= i <= keyNum - 1 ==> ( node.keys[i] != val );
-    //        assert val !in node.Contents; 
-    //        assert ValInSubTree(node, val) == false;
-            inTree := false;
-            return;
-        } else { 
-            ghost var currentContents: set<int> := {};
-         /*   assert ValInSubTree(node, val) ==> (exists i:int :: 0 <= i <= node.keyNum && (ValInSubTree(node.children[i], val))) by {
-                assert ValInSubTree(node, val) ==> val in node.Contents;
-                assert node.ChildrenContentsDisjoint() && node.Contents == node.SumOfChildrenContents(0, node.keyNum+1);
-                assert (val in node.Contents ==> val in node.SumOfChildrenContents(0, node.keyNum+1)) ==> (exists i:int :: 0 <= i <= node.keyNum && val in node.children[i].Contents);
-            } */
-            var i := 0;
-            assert val !in currentContents;
-        //    assert currentContents == node.SumOfChildrenContents(0, i);
-            while i < node.keyNum 
-                invariant 0 <= i <= node.keyNum
-                invariant 1 <= i <= node.keyNum ==> ( val > node.keys[i - 1] )  
-                invariant forall j : int :: 0 <= j < i <= node.keyNum ==> (!ValInSubTree(node.children[j], val))
-                invariant val !in currentContents
-         //       invariant 1 <= i <= node.keyNum ==> (val !in node.SumOfChildrenContents(0, i - 1)) // TIMEOUT
-                invariant i > 0 ==> currentContents == node.SumOfChildrenContents(0, i + 1) 
-            {
-            //    assert currentContents == node.SumOfChildrenContents(0, i);
-                if val < node.keys[i] {
-                    inTree := FindHelper(node.children[i], val);
-                    assert ( ValInSubTree(node.children[i], val) ==> inTree == true );
-                    assert ( !ValInSubTree(node.children[i], val) ==> inTree == false );
-                    assert node.Valid() ==> node.children[i].Contents <= node.Contents;
-                    assert node.Hierarchy() ==> (i > 0 && val < node.keys[i] ==> ( node.keys[i - 1] <= val ));
-                    assert val in node.children[i].Contents ==> val in node.Contents;
-                    assert ValInSubTree(node.children[i], val) ==> ValInSubTree(node, val);
-                //    assert forall j:int :: i < j <= node.keyNum ==> (forall x:int :: x in node.children[j].Contents ==> val < x);
-                   
-                //    assert ( node.Hierarchy() && node.keys[i - 1] <= val < node.keys[i] && !ValInSubTree(node.children[i], val) ) ==> !ValInSubTree(node, val);
-                    return;
-                } 
-                i := i + 1;
-                assert val !in node.children[i].Contents by { // without by MAY NOT HOLD    
-                    assert val > node.keys[i];
-                    assert forall x:int :: x in node.children[i].Contents ==> val > x;
-                }
-                currentContents := currentContents + node.children[i].Contents;
-                assert currentContents == node.SumOfChildrenContents(0, i + 1);
-            }
-
-            assert val > node.keys[node.keyNum - 1];
-            assert forall i : int :: 0 <= i < node.keyNum ==> (!ValInSubTree(node.children[i], val));
-            assert val !in currentContents;
-        //    assert (forall i : int :: 0 <= i < node.keyNum ==> (val !in node.children[i].Contents)) ==> (val !in node.SumOfChildrenContents(0, node.keyNum)); // MAY NOT HOLD (part after last ==>)
-        //    assert val !in node.SumOfChildrenContents(0, node.keyNum); // TIMEOUT
-            inTree := FindHelper(node.children[node.keyNum], val);
-            assert ( ValInSubTree(node.children[node.keyNum], val) ==> inTree == true );
-            assert ( !ValInSubTree(node.children[node.keyNum], val) ==> inTree == false );
-            assert ValInSubTree(node.children[node.keyNum], val) ==> ValInSubTree(node, val);
-        //    assert currentContents == node.SumOfChildrenContents(0, node.keyNum+1);
-            currentContents := currentContents + node.children[node.keyNum].Contents;
-        //    assert currentContents == node.SumOfChildrenContents(0, node.keyNum+2);
-        
-        //    assert currentContents == node.SumOfChildrenContents(0, node.keyNum+1);
-            assert node.Contents == node.SumOfChildrenContents(0, node.keyNum+1);
-        //    assert currentContents == node.Contents by {
-        //        assert currentContents == node.SumOfChildrenContents(0, node.keyNum+1);
-        //        assert node.Contents == node.SumOfChildrenContents(0, node.keyNum+1);
-        //    }   
-            
-        //    assert node.isLeaf == false ==> (node.Valid() ==> (node.Contents == node.SumOfChildContents(node.children[0..node.keyNum+1]))); // TIMEOUT
-        //    assert (val in node.children[node.keyNum].Contents ==> val in node.Contents);
-        //    assert val in node.Contents ==> ValInSubTree(node, val);
-        /*    assert ValInSubTree(node.children[node.keyNum], val) ==> ValInSubTree(node, val) by {
-                assert forall i : int :: 0 <= i < node.keyNum ==> (!ValInSubTree(node.children[i], val));
-                assert val !in node.SumOfChildrenContents(0, node.keyNum);
-            } */
-        /*    assert ValInSubTree(node.children[node.keyNum], val) ==> (ValInSubTree(node, val) && inTree == true) by {
-                assert ( ValInSubTree(node.children[node.keyNum], val) ==> inTree == true );
-                assert ValInSubTree(node.children[node.keyNum], val) ==> ValInSubTree(node, val);
-            } */
-            assert ValInSubTree(node.children[node.keyNum], val) ==> ValInSubTree(node, val) ==> inTree == true by {
-                assert ( ValInSubTree(node.children[node.keyNum], val) ==> inTree == true );
-                assert ValInSubTree(node.children[node.keyNum], val) ==> ValInSubTree(node, val);
-            }
-        //    assert forall i : int :: 0 <= i <= node.keyNum ==> (!ValInSubTree(node.children[i], val));
-        //    assert node.Contents == node.SumOfChildrenContents(0, node.keyNum+1);
-        //    assert node.Contents == currentContents;
-            /*
-            assert !ValInSubTree(node.children[node.keyNum], val) ==> !ValInSubTree(node, val) by {
-                assert forall i : int :: 0 <= i <= node.keyNum ==> (!ValInSubTree(node.children[i], val));
-            //    assert node.Contents == node.SumOfChildContents(node.children[0..node.keyNum+1]);
-                assert val !in node.SumOfChildContents(node.children[0..node.keyNum+1]);
-                assert val !in node.Contents;
-            }
-            
-            assert ValInSubTree(node.children[node.keyNum], val) == ValInSubTree(node, val) by {
-                assert forall i : int :: 0 <= i < node.keyNum ==> (!ValInSubTree(node.children[i], val));
-                assert ValInSubTree(node.children[node.keyNum], val) ==> ValInSubTree(node, val);
-                assert !ValInSubTree(node.children[node.keyNum], val) ==> !ValInSubTree(node, val);
-            } */
-            /* assert ( ValInSubTree(node, val) ==> val in node.children[node.keyNum].Contents) by {
-                assert forall i : int :: 0 <= i < node.keyNum ==> (!ValInSubTree(node.children[i], val));
-                assert ValInSubTree(node, val) ==> val in node.Contents;
-                assert node.Contents == node.SumOfChildContents(node.children[0..node.keyNum+1]);
-                assert (node.Valid() && node.isLeaf == false) ==> node.ChildrenContentsDisjoint();
-            } // DOES NOT HOLD, with by ==> timeout 
-            */
-        //    assert ValInSubTree(node, val) ==> (exists i:int :: 0 <= i <= node.keyNum && (ValInSubTree(node.children[i], val)));
-        //    assert (exists i: int :: 0 <= i <= node.keyNum && val in node.children[i].Contents) ==> inTree == true; // TIMEOUT
-
-        /*    assert ValInSubTree(node, val) == ValInSubTree(node.children[node.keyNum], val) by {
-                assert forall i : int :: 0 <= i < node.keyNum ==> (!ValInSubTree(node.children[i], val));
-                assert val !in node.SumOfChildrenContents(0, node.keyNum);
-                assert node.Contents == node.SumOfChildrenContents(0, node.keyNum) + node.children[node.keyNum].Contents;
-            } */
-
-            assert ( ValInSubTree(node, val) ==> inTree == true ); 
-            /*
-            by {
-                assert val in node.Contents;
-                assert node.Contents == node.SumOfChildContents(node.children[0..node.keyNum+1]);
-                assert exists i:int :: 0 <= i <= node.keyNum ==> (val in node.children[i].Contents);
-                
-            } */
-            assert ( !ValInSubTree(node, val) ==> inTree == false );
-        //    assert ( (forall i: int :: 0 <= i <= node.keyNum ==> ( !ValInSubTree(node.children[i], val))) ==> inTree == false);
-            return;
-        }
-
-    } 
-    */
-
+   
     
  /*   method Main()
         modifies this, Repr
