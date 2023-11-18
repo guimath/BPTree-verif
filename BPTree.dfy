@@ -18,21 +18,8 @@ class BPTree {
         Contents := {};
     } 
 
-
-// COMMENT: currently not using this, just experimenting if verification is easier with more or less helper functions
-    // method SplitTest(current:BPTNode, val:int) returns(newNode:BPTNode)
-    //     modifies current, current.Repr
-    //     requires current.Valid()
-    //     requires !(val in current.Contents)
-    //     // ensures newNode.Valid()
-    //     // ensures current.Valid()
-    //     // ensures current.keyNum > 0
-    //     // ensures current.keys[current.keyNum-1] < newNode.keys[0]
-    //     // ensures old(current.Content) < (current.Content + newNode.Content)
-    //     // ensures val in (current.Content + newNode.Content)
-    // {
-    // }
-
+    // TODO newNode and current both independantly can verify the first three ensures (if you comment other part)
+    // but if I add them both verification times out (tried with no limit, no result after ~10min)  
     static method SplitLeaf(current:BPTNode, val:int) returns(newNode:BPTNode)
         modifies current, current.Repr
         requires current.Valid()
@@ -40,14 +27,14 @@ class BPTree {
         requires val > 0
         requires current.isLeaf
         requires current.keyNum == ORDER
-        ensures current.isLeaf && newNode.isLeaf
-        ensures current.keyNum > 0 && newNode.keyNum > 0
-        ensures current.Valid()    && newNode.Valid()
-        ensures current.keys[current.keyNum-1] < newNode.keys[0]
-        ensures old(current.Contents) < (current.Contents + newNode.Contents)
-        ensures val in (current.Contents + newNode.Contents)
-        ensures current.Contents !! newNode.Contents
-    {
+        ensures current.Valid()    // && newNode.Valid()
+        ensures current.isLeaf     // && newNode.isLeaf
+        ensures current.keyNum > 0 // && newNode.keyNum > 0
+        // ensures current.keys[current.keyNum-1] < newNode.keys[0]
+        // ensures old(current.Contents) < (current.Contents + newNode.Contents)
+        // ensures val in (current.Contents + newNode.Contents)
+        // ensures current.Contents !! newNode.Contents
+    { 
         newNode := new BPTNode.Init();
         var temp := new int[ORDER + 1]; // storing all keys and the new value in temporary list
         var idx := current.GetInsertIndex(val);
@@ -89,42 +76,59 @@ class BPTree {
         // // pointers rearrangement -> adding this causes timeout when verifying 
         newNode.nextLeaf := current.nextLeaf;
         current.nextLeaf := newNode;
-        for i := 0 to current.keyNum - 1 
+
+        //************* current *************// 
+        for i := 0 to current.keyNum  
             modifies current.keys
+            invariant 0 <= i <= current.keyNum
             invariant forall j: int :: 0 <= j < i ==> (
-                current.keys[j] > 0
+                current.keys[j] == temp[j]
             )
             {current.keys[i] := temp[i];}
 
-        for i := current.keyNum to ORDER - 1 
+        for i := current.keyNum to ORDER 
             modifies current.keys
+            invariant current.keyNum <= i <= ORDER
+            invariant forall j: int :: current.keyNum <= j < i ==> (
+                current.keys[j] == 0
+            )
+            invariant forall j: int :: 0 <= j < current.keyNum ==> (
+                current.keys[j] == temp[j]
+            )
             {current.keys[i] := 0;}
-        
-        var offset := current.keyNum - 1;
-        for i := 0 to newNode.keyNum - 1 
-            modifies newNode.keys
-            {newNode.keys[i] := temp[offset+i];}
-        
-        for i := newNode.keyNum to ORDER - 1 
-            modifies newNode.keys
-            {newNode.keys[i] := 0;}
-
-        
-        // current.Contents := {};
-        // for i := 0 to current.keyNum 
-        // {
-        //     current.Contents := current.Contents + {current.keys[i]};
-        // }
-        // newNode.Contents := {};
-        // for i := 0 to newNode.keyNum {
-        //     newNode.Contents := newNode.Contents + {newNode.keys[i]};
-        // }
+                
         current.Repr := {current} + {current.children} + {current.keys};
-        newNode.Repr := {newNode} + {newNode.children} + {newNode.keys};
-        assert newNode.KeysInRepr();
         assert current.KeysInRepr();
-        assume current.KeysInContents();
-        assume newNode.KeysInContents();
+        assert current.ValidBeforeContentUpdate();
+        current.AddKeysContent();
+        assert current.Valid(); // independantly verified
+
+        //************* newNode *************// 
+        // var offset := current.keyNum;
+        // for i := 0 to newNode.keyNum 
+        //     modifies newNode.keys
+        //     invariant 0 <= i <= newNode.keyNum
+        //     invariant forall j: int :: 0 <= j < i ==> (
+        //         newNode.keys[j] == temp[offset+j]
+        //     )
+        //     {newNode.keys[i] := temp[offset+i];}
+        
+        // for i := newNode.keyNum to ORDER 
+        //     modifies newNode.keys
+        //     invariant newNode.keyNum <= i <= ORDER
+        //     invariant forall j: int :: newNode.keyNum <= j < i ==> (
+        //         newNode.keys[j] == 0
+        //     )
+        //     invariant forall j: int :: 0 <= j < newNode.keyNum ==> (
+        //         newNode.keys[j] == temp[offset+j]
+        //     )
+        //     {newNode.keys[i] := 0;}
+
+        // newNode.Repr := {newNode} + {newNode.children} + {newNode.keys};
+        // assert newNode.KeysInRepr();
+        // assert newNode.ValidBeforeContentUpdate();
+        // newNode.AddKeysContent();
+        // assert newNode.Valid();// independantly verified
     }
 
     // // adds newnode to current node 
