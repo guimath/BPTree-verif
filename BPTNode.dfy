@@ -413,11 +413,15 @@ class BPTNode {
         requires ValidBeforeContentUpdate()
         ensures Valid()
     {
-        // Contents := {}
-        // for j:int := 0  to keyNum 
-        // {
-        //     Contents := Contents + {keys[j]};
-        // }
+        // current.Contents := {};
+        // for i := 0 to current.keyNum 
+        //     invariant current.KeysInRepr()
+        //     invariant i < current.keyNum ==> current.Contents !! {current.keys[i]}
+        //     // invariant |current.Contents| == i
+        //     { 
+        //         current.Contents := current.Contents + {current.keys[i]}; 
+        //     }
+        // assert current.KeysInContents();
         //TODO Patch
         assume KeysInRepr();
         assume KeysInContents();
