@@ -31,7 +31,7 @@ class BPTNode {
         KeysInRepr() &&
         KeysInContents() &&
         children in Repr &&
-        ( keyNum == 0 ==> Empty() ) &&
+        ( keyNum == 0 ==> Empty()) &&
         KeyNumOK()&&
         Sorted()&&
         LeavesHeightEq() && 
@@ -305,7 +305,8 @@ class BPTNode {
             children[i]==null &&
             keys[i]==0
         )) &&
-        children[ORDER] == null
+        children[ORDER] == null &&
+        |Contents| == 0
     }
 
     ghost predicate NotFull()
