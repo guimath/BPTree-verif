@@ -520,41 +520,72 @@ class BPTree {
     //     else { inTree := FindHelper(root, val); }
     // }
      
-    // static method FindHelper(node: BPTNode, val: int) returns (inTree: bool) // verifies correct in under 100 seconds
-    //     requires node.Valid()
-    //     ensures node.ContainsVal(val) <==> inTree
-    //     decreases node.Repr
-    // {        
-    //     if node.keyNum == 0 {return false;}
-    //     if node.isLeaf == true { 
-    //         var keyNum := node.keyNum;
-    //         var i := 0;
-    //         while i< keyNum
-    //             invariant forall j: int :: 0 <= j < i<= keyNum ==> node.keys[j] != val
-    //             invariant 0 <= i <= keyNum
-    //         {
-    //             if node.keys[i] == val {return true;}
-    //             i := i+1;
-    //         }
-    //         return false;
-    //     }
-    //     ghost var IgnContents : set<int> := {};
-    //     var i := 0;
-    //     while i < node.keyNum+1 
-    //         invariant 0 <= i <= node.keyNum+1 
-    //         invariant forall j : int :: 0 <= j < i ==> (!node.children[j].ContainsVal(val))
-    //         invariant !(val in IgnContents)
-    //     {
-    //         if node.children[i] is BPTNode {
-    //             var tmp := FindHelper(node.children[i], val);
-    //             if tmp {return true;} 
-    //             //IGn is set of keys that are in children but are different to val
-    //             IgnContents := IgnContents + node.children[i].Contents; 
-    //         }
-    //         i := i+1;
-    //     }
-    //     return false;
-    // }
+    method FindHelper(node: BPTNode, val: int) returns (inTree: bool) // verifies correct in under 100 seconds
+        requires node.Valid()
+        ensures node.ContainsVal(val) <==> inTree
+        decreases node.Repr
+    {        
+        if node.keyNum == 0 {
+            assert !node.ContainsVal(val); // Having this assert as well as the second one results in timeout
+            return false;
+        }
+        if node.isLeaf == true { 
+            var keyNum := node.keyNum;
+            var i := 0;
+            while i< keyNum
+                invariant forall j: int :: 0 <= j < i<= keyNum ==> node.keys[j] != val
+                invariant 0 <= i <= keyNum
+            {
+                if node.keys[i] == val {return true;}
+                i := i+1;
+            }
+            assert !node.ContainsVal(val); // Having this assert as well as the second one results in timeout
+            return false;
+        }
+        if node.keyNum > 0 && !node.isLeaf {
+            var idx := node.keyNum;
+            for i := 0 to node.keyNum 
+                invariant 0 <= i <= node.keyNum 
+                invariant 0 < i ==> node.keys[i-1] < val
+            {
+                if val == node.keys[i]  {
+                    assert node.ContainsVal(val); // Having this assert as well as the second one results in timeout
+                    return true; // verifies assert node.ContainsVal(val);
+                }
+                if val < node.keys[i] {
+                    idx := i;
+                    assert idx == i;
+                    assert 0 < idx ==> node.keys[idx-1] < val;
+                    break;
+                }
+            }   
+            assert idx < node.keyNum ==> val < node.keys[idx];
+            assert 0< idx ==> node.keys[idx-1] < val;
+            assert node.Hierarchy();
+            
+            assert forall i: int :: 0 <= i < node.keyNum ==>
+                (forall k :: k in node.children[i].Contents ==> 
+                    k < node.keys[i]);
+            assert 1<= idx < node.keyNum+1 ==> 
+                (forall k :: k in node.children[idx-1].Contents ==> 
+                        k < node.keys[idx-1]);
+            assert 1<= idx < node.keyNum+1 ==> 
+                (forall k :: k in node.children[idx-1].Contents ==> 
+                        k < val);       
+            assert 1 <= idx < node.keyNum+1 ==> !node.children[idx-1].ContainsVal(val);
+            assert forall j :: 0< j < idx ==> !node.children[j].ContainsVal(val);
+            
+
+            assert forall j :: idx < j < node.keyNum+1 ==> !node.children[j].ContainsVal(val);
+
+            assert forall j :: 0 < j < node.keyNum+1 ==> j != idx ==> !node.children[j].ContainsVal(val);
+
+            inTree := FindHelper(node.children[idx], val);
+            // assert 0< idx ==> !node.children[idx-1].ContainsVal(val);
+            assert node.ContainsVal(val) <==> inTree; //This assert doesn't complete
+            return inTree; // Why success ?
+        }
+    }
     // assert forall j : int :: 0 <= j < node.keyNum+1 ==> (!ValInSubTree(node.children[j], val));
     // assert !(val in IgnContents); 
     // // assert IgnContents == node.SumOfChildContents(node.children[0..node.keyNum+1]);
@@ -635,7 +666,7 @@ class BPTree {
                 invariant i > 0 ==> currentContents == node.SumOfChildrenContents(0, i + 1) 
             {
             //    assert currentContents == node.SumOfChildrenContents(0, i);
-                if val <= node.keys[i] {
+                if val < node.keys[i] {
                     inTree := FindHelper(node.children[i], val);
                     assert ( ValInSubTree(node.children[i], val) ==> inTree == true );
                     assert ( !ValInSubTree(node.children[i], val) ==> inTree == false );
