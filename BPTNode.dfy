@@ -1,3 +1,4 @@
+include "utils.dfy"
 
 const ORDER:int := 5
 
@@ -260,10 +261,10 @@ class BPTNode {
         requires LengthOk()
         requires KeysInRepr()
     {
-        (isLeaf == true ==> (
-            |Contents| == keyNum && 
-            (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
-        )) &&
+        // (isLeaf == true ==> (
+        //     // |Contents| == keyNum && 
+        //     (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
+        // )) &&
         forall i : int :: 0 <= i < keyNum ==> (
             keys[i] in Contents
         )
@@ -396,6 +397,8 @@ class BPTNode {
                 assert forall j: int :: idx < j < keyNum ==> ( 
                     keys[j] == prev_keys[j-1]
                 );
+                // assert  keys[0..idx] == prev_keys[0..idx];
+                // assert  keys[idx+1..keyNum] == prev_keys[idx..keyNum-1];
                 assert forall j: int :: idx < j < keyNum ==> ( // previous array was sorted so this is also
                     prev_keys[j-1] < prev_keys[j]
                 );   
@@ -417,25 +420,41 @@ class BPTNode {
         AddKeysContent();
     }
 
+    
     ghost method AddKeysContent()
         // Adds all keys to the content 
         // only for leaves 
         modifies this
         requires ValidBeforeContentUpdate()
+        requires keyNum > 0
+        requires isLeaf
         ensures Valid()
     {
-        // current.Contents := {};
-        // for i := 0 to current.keyNum 
-        //     invariant current.KeysInRepr()
-        //     invariant i < current.keyNum ==> current.Contents !! {current.keys[i]}
-        //     // invariant |current.Contents| == i
-        //     { 
-        //         current.Contents := current.Contents + {current.keys[i]}; 
-        //     }
-        // assert current.KeysInContents();
-        //TODO Patch
-        assume KeysInRepr();
-        assume KeysInContents();
+        assert this in Repr;
+        assert children in Repr;
+        Repr := Repr + {keys};
+        assert children in Repr;
+        assert KeysInRepr();
+        assert this in Repr;
+        // Contents := set x | x in keys[..keyNum] :: x;
+        Contents := {};
+        for i := 0 to keyNum 
+            invariant KeysInRepr()
+            invariant this in Repr
+            invariant children in Repr
+            invariant Sorted()
+            // invariant Repr == old(Repr) // QUESTION : why does this not hold 
+            invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] < keys[i]
+            invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] != keys[i]
+            invariant forall j :: 0 <= j < i ==> keys[j] in Contents
+            // invariant |Contents| == i // COMMENT : needed if checking length in keysInContent
+            { 
+                Contents := Contents + {keys[i]}; 
+            }
+        assert KeysInContents();
+        assert isLeaf;
+        assert children in Repr;
+        assert Valid();
     }
 
     constructor Init()
