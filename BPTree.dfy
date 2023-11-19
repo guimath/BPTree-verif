@@ -22,22 +22,23 @@ class BPTree {
 
     // COMMENT: newNode and current both independantly can verify the first three ensures (if you comment other part)
     // but if I add them both verification times out (tried with no limit, no result after ~10min)  
-    // static method SplitLeaf(current:BPTNode, val:int) returns(newNode:BPTNode)
-    //     modifies current, current.Repr
-    //     requires current.Valid()
-    //     requires !(val in current.Contents)
-    //     requires val > 0
-    //     requires current.isLeaf
-    //     requires current.keyNum == ORDER
-    //     ensures current.Valid()    // && newNode.Valid()
-    //     ensures current.isLeaf     // && newNode.isLeaf
-    //     ensures current.keyNum > 0 // && newNode.keyNum > 0
-    //     // ensures current.keys[current.keyNum-1] < newNode.keys[0]
-    //     // ensures old(current.Contents) < (current.Contents + newNode.Contents)
-    //     // ensures val in (current.Contents + newNode.Contents)
-    //     // ensures current.Contents !! newNode.Contents
-    // { 
-    //     newNode := new BPTNode.Init();
+    static method SplitLeaf(current:BPTNode, val:int) returns(newNode:BPTNode)
+        modifies current, current.Repr
+        requires current.Valid()
+        requires !(val in current.Contents)
+        requires val > 0
+        requires current.isLeaf
+        requires current.keyNum == ORDER
+        ensures current.Valid()    && newNode.Valid()
+        ensures current.isLeaf     && newNode.isLeaf
+        ensures current.keyNum > 0 && newNode.keyNum > 0
+        ensures current.keys[current.keyNum-1] < newNode.keys[0]
+        ensures old(current.Contents) < (current.Contents + newNode.Contents)
+        ensures val in (current.Contents + newNode.Contents)
+        ensures current.Contents !! newNode.Contents
+    { 
+        newNode := new BPTNode.Init();
+    }
     //     var temp := new int[ORDER + 1]; // storing all keys and the new value in temporary list
     //     var idx := current.GetInsertIndex(val);
     //     for i := 0 to idx 
@@ -80,6 +81,7 @@ class BPTree {
     //     current.nextLeaf := newNode;
 
     //     //************* current *************// 
+    //     // TODO OPTIMIZE 
     //     for i := 0 to current.keyNum  
     //         modifies current.keys
     //         invariant 0 <= i <= current.keyNum
@@ -88,6 +90,9 @@ class BPTree {
     //         )
     //         {current.keys[i] := temp[i];}
 
+    //     assert forall j: int :: 0 <= j < current.keyNum ==> (
+    //         current.keys[j] == temp[j]
+    //     );
     //     for i := current.keyNum to ORDER 
     //         modifies current.keys
     //         invariant current.keyNum <= i <= ORDER
@@ -104,33 +109,37 @@ class BPTree {
     //     assert current.ValidBeforeContentUpdate();
     //     current.AddKeysContent();
     //     assert current.Valid(); // independantly verified
+    //     assert current.isLeaf; 
+    //     assert current.keyNum > 0; 
 
-    //     //************* newNode *************// 
-    //     // var offset := current.keyNum;
-    //     // for i := 0 to newNode.keyNum 
-    //     //     modifies newNode.keys
-    //     //     invariant 0 <= i <= newNode.keyNum
-    //     //     invariant forall j: int :: 0 <= j < i ==> (
-    //     //         newNode.keys[j] == temp[offset+j]
-    //     //     )
-    //     //     {newNode.keys[i] := temp[offset+i];}
+        //************* newNode *************// 
+    //     var offset := current.keyNum;
+    //     for i := 0 to newNode.keyNum 
+    //         modifies newNode.keys
+    //         invariant 0 <= i <= newNode.keyNum
+    //         invariant forall j: int :: 0 <= j < i ==> (
+    //             newNode.keys[j] == temp[offset+j]
+    //         )
+    //         {newNode.keys[i] := temp[offset+i];}
         
-    //     // for i := newNode.keyNum to ORDER 
-    //     //     modifies newNode.keys
-    //     //     invariant newNode.keyNum <= i <= ORDER
-    //     //     invariant forall j: int :: newNode.keyNum <= j < i ==> (
-    //     //         newNode.keys[j] == 0
-    //     //     )
-    //     //     invariant forall j: int :: 0 <= j < newNode.keyNum ==> (
-    //     //         newNode.keys[j] == temp[offset+j]
-    //     //     )
-    //     //     {newNode.keys[i] := 0;}
+    //     for i := newNode.keyNum to ORDER 
+    //         modifies newNode.keys
+    //         invariant newNode.keyNum <= i <= ORDER
+    //         invariant forall j: int :: newNode.keyNum <= j < i ==> (
+    //             newNode.keys[j] == 0
+    //         )
+    //         invariant forall j: int :: 0 <= j < newNode.keyNum ==> (
+    //             newNode.keys[j] == temp[offset+j]
+    //         )
+    //         {newNode.keys[i] := 0;}
 
-    //     // newNode.Repr := {newNode} + {newNode.children} + {newNode.keys};
-    //     // assert newNode.KeysInRepr();
-    //     // assert newNode.ValidBeforeContentUpdate();
-    //     // newNode.AddKeysContent();
-    //     // assert newNode.Valid();// independantly verified
+    //     newNode.Repr := {newNode} + {newNode.children} + {newNode.keys};
+    //     assert newNode.KeysInRepr();
+    //     assert newNode.ValidBeforeContentUpdate();
+    //     newNode.AddKeysContent();
+    //     assert newNode.Valid();// independantly verified
+    //     assert newNode.isLeaf; 
+    //     assert newNode.keyNum > 0; 
     // }
 
     // COMMENT: splitNode does not work currently
@@ -245,67 +254,46 @@ class BPTree {
     // }
     
     // COMMENT: this is who knows which version of insert, but having constant trouble with iterating through arrays and modifying them and showing that they keep the sorted properties, often getting timeout
-    // method Insert(val: int)
-    //     requires Valid()
-    //     modifies Repr
-    //     // ensures Valid()
-    //     // ensures val > 0 ==> Contents == old(Contents) + {val}
-    // {
-    //     // edge case 1 : negative val  
-    //     if val <= 0 {
-    //         assert Valid();
-    //         return;// TODO return error 
-    //     }
-    //     // edge case 2 : val already in tree *
-    //     var valInTree := Find(val);
-    //     if valInTree{
-    //         assert Valid();
-    //         assert Contents == old(Contents) + {val};
-    //         return;
-    //     }
-    //     assert val !in Contents;
-    //     // edge case 3 if root is null == first key in the tree ever
-    //     if root == null { 
-    //         // creating root (as leaf) and adding key
-    //         root := new BPTNode.Init();
-    //         root.keys[0] := val;
-    //         root.keyNum := 1;
-    //         root.Contents := {root.keys[0]};
-    //         Contents := root.Contents;
-    //         Repr := root.Repr + {this};
-    //         assert Valid();
-    //         assert Contents == old(Contents) + {val};
-    //         return;
-    //         // postcond satisfied
-    //     }
-    //     else { // root is BPTNode && val > 0
-    //         assert root.Valid();
-    //         var updateParent : bool;
-    //         var newRoot:BPTNode := root;
-    //         assert newRoot.Valid();
-    //         root := null;
-    //         assert root == null;
-    //         // QUESTION : why cannot prove following? is it still linked ?
-    //         // assert newRoot.Valid();
-
-    //         // root, updateParent := InsertHelper(null, newRoot, val);
-    //         // assert root is BPTNode;
-    //         // assert root.Valid();
-    //         // Contents := root.Contents;
-    //         // Repr := root.Repr + {this};
-    //         // assert root.ContainsVal(val);
-    //         // assert Contents == old(Contents) + {val};
-    //         // // root := newRoot; // QUESTION : Why not working ? How to just change pointer ? 
-    //         // assert root.Valid();
-
-    //         //assert root.Valid(); // this results in time out 
-    //         // assert Valid();
-    //         //assert Contents == old(Contents) + {val};
-    //         return;
-    //     }
-    //     // else {
-    //     // }
-    // }
+    method Insert(val: int)
+        requires Valid()
+        modifies Repr
+        // ensures Valid()
+        // ensures val > 0 ==> Contents == old(Contents) + {val}
+    {
+        // edge case 1 : negative val  
+        if val <= 0 {
+            assert Valid();
+            return;// TODO return error 
+        }
+        // edge case 2 : val already in tree *
+        var valInTree := Find(val);
+        if valInTree{
+            assert Valid();
+            assert Contents == old(Contents) + {val};
+            return;
+        }
+        assert val !in Contents;
+        // edge case 3 if root is null == first key in the tree ever
+        if root == null { 
+            // creating root (as leaf) and adding key
+            root := new BPTNode.Init();
+            root.keys[0] := val;
+            root.keyNum := 1;
+            root.Contents := {root.keys[0]};
+            Contents := root.Contents;
+            Repr := root.Repr + {this};
+            assert Valid();
+            assert Contents == old(Contents) + {val};
+            return;
+            // postcond satisfied
+        }
+        else { // root is BPTNode && val > 0
+            var updateParent : bool;
+            root, updateParent := InsertHelper(null, root, val);
+            assert root.Valid();
+            return;
+        }
+    }
 
 
     // COMMENT: not verifying (maybe partially)
@@ -324,6 +312,9 @@ class BPTree {
         ensures newNode.Valid() 
         ensures node.Valid()
         ensures node.ContainsVal(x) || newNode.ContainsVal(x)
+        ensures newNode == node || fresh(newNode)
+        ensures parent != null ==> parent.Valid()
+        ensures this !in newNode.Repr 
         ensures parent == null ==> newNode.ContainsVal(x) && old(node.Contents) + {x} == newNode.Contents
         // ensures old(node.Contents) + {x} == node.Contents + newNode.Contents
         decreases  node.height
@@ -334,73 +325,73 @@ class BPTree {
     //    ensures parent == old(parent)
     //    decreases if node == null then {} else node.Repr 
     {
-        // newNode := new BPTNode.Init();
-        // updateParent := false;
-        // // node is leaf == no more recursion
-        // if node.isLeaf {
-        //     assert node.Valid(); 
-        //     // node.keyNum < ORDER == there is place for new key in the leaf
-        //     if node.keyNum < ORDER {
-        //         //inserting in the leaf (no additional node required)
-        //         node.InsertAtLeaf(x);
-        //         newNode := node;
-        //         updateParent := false;
-        //         return; 
-        //     } 
+        newNode := new BPTNode.Init();
+        updateParent := false;
+        // node is leaf == no more recursion
+        if node.isLeaf {
+            assert node.Valid(); 
+            // node.keyNum < ORDER == there is place for new key in the leaf
+            if node.keyNum < ORDER {
+                //inserting in the leaf (no additional node required)
+                node.InsertAtLeaf(x);
+                newNode := node;
+                updateParent := false;
+                return; 
+            } 
 
-        //     // not enough space in the leaf ==> splitting the leaf
-        //     var splitNode: BPTNode := SplitLeaf(node, x);
-        //     // parent is null == node was root  
-        //     if parent == null {
-        //         // creates new root at height +1
-        //         newNode := new BPTNode.Init();
-        //         newNode.keyNum := 1;
-        //         newNode.keys[0] := splitNode.keys[0];
-        //         newNode.children[0] := node;
-        //         newNode.children[1] := splitNode;
-        //         newNode.isLeaf := false;
-        //         newNode.height := node.height +1;
-        //         newNode.Contents := node.Contents + splitNode.Contents;
-        //         newNode.Repr := newNode.Repr + node.Repr + splitNode.Repr; 
-        //         updateParent  := false; 
-        //         // assert newNode.children[0].keys[newNode.children[0].keyNum -1] < newNode.children[1].keys[0];
-        //         // assert newNode.children[0].Sorted();
-        //         // assert newNode.children[1].Sorted();
-        //         return;  
-        //     }  
-        //     // // if not, we need to update parent node
-        //     updateParent := true;
-        //     newNode := splitNode;
-        //     return;
-        // } 
+            // not enough space in the leaf ==> splitting the leaf
+            var splitNode: BPTNode := SplitLeaf(node, x);
+            // parent is null == node was root  
+            if parent == null {
+                // creates new root at height +1
+                newNode := new BPTNode.Init();
+                newNode.keyNum := 1;
+                newNode.keys[0] := splitNode.keys[0];
+                newNode.children[0] := node;
+                newNode.children[1] := splitNode;
+                newNode.isLeaf := false;
+                newNode.height := node.height +1;
+                newNode.Contents := node.Contents + splitNode.Contents;
+                newNode.Repr := newNode.Repr + node.Repr + splitNode.Repr; 
+                updateParent  := false; 
+                // assert newNode.children[0].keys[newNode.children[0].keyNum -1] < newNode.children[1].keys[0];
+                // assert newNode.children[0].Sorted();
+                // assert newNode.children[1].Sorted();
+                return;  
+            }  
+            // // if not, we need to update parent node
+            updateParent := true;
+            newNode := splitNode;
+            return;
+        } 
 
-        // // node is not leaf 
-        // assert node.isLeaf == false;
-        // var innerUpdateParent := false;
-        // var innerNewNode : BPTNode;
-        // var idx := node.GetInsertIndex(x);
-        // innerNewNode, innerUpdateParent := InsertHelper(node, node.children[idx], x);
-        // // if innerUpdateParent && node.keyNum == ORDER {
-        // if !innerUpdateParent {
-        //     node.Contents := {};
-        //     node.Repr := {node} + {node.children} + {node.keys};
-        //     for i:= 0 to node.keyNum+1 {
-        //         node.Contents := node.Contents + node.children[i].Contents;
-        //         node.Repr := node.Repr + node.children[i].Repr;
-        //     }
-        //     newNode := node;
-        //     updateParent := false;
-        //     return;
-        // }
-        // if node.keyNum < ORDER {
-        //     InsertAtNode(node, innerNewNode);
-        //     newNode := node; // TODO check that is note erasing 
-        //     updateParent := false;
-        //     return; 
-        // } 
-        // newNode := SplitNode(node, newNode);
-        // updateParent := true;
-        // return;
+        // node is not leaf 
+        assert node.isLeaf == false;
+        var innerUpdateParent := false;
+        var innerNewNode : BPTNode;
+        var idx := node.GetInsertIndex(x);
+        innerNewNode, innerUpdateParent := InsertHelper(node, node.children[idx], x);
+        // if innerUpdateParent && node.keyNum == ORDER {
+        if !innerUpdateParent {
+            node.Contents := {};
+            node.Repr := {node} + {node.children} + {node.keys};
+            for i:= 0 to node.keyNum+1 {
+                node.Contents := node.Contents + node.children[i].Contents;
+                node.Repr := node.Repr + node.children[i].Repr;
+            }
+            newNode := node;
+            updateParent := false;
+            return;
+        }
+        if node.keyNum < ORDER {
+            InsertAtNode(node, innerNewNode);
+            newNode := node; // TODO check that is note erasing 
+            updateParent := false;
+            return; 
+        } 
+        newNode := SplitNode(node, newNode);
+        updateParent := true;
+        return;
     }
 
 
@@ -531,6 +522,7 @@ class BPTree {
         (root == null ==> Contents == {}) && 
         (root != null ==> 
             root in Repr && root.Repr <= Repr && 
+            !(this in root.Repr) && 
             root.Valid() &&
             Contents == root.Contents &&
             root is BPTNode &&
