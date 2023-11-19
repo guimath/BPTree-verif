@@ -261,10 +261,13 @@ class BPTNode {
         requires LengthOk()
         requires KeysInRepr()
     {
+        // this part removed because it was hard to verify set size...
         // (isLeaf == true ==> (
         //     // |Contents| == keyNum && 
         //     (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
         // )) &&
+        (isLeaf == true ==> (Contents == set x | x in keys[..keyNum]))
+        &&
         forall i : int :: 0 <= i < keyNum ==> (
             keys[i] in Contents
         )
@@ -359,7 +362,9 @@ class BPTNode {
         modifies this, keys
         ensures Valid()
         ensures ContainsVal(key)
+        ensures old(Contents) + {key} == Contents
     {
+
         var idx := GetInsertIndex(key);
         ghost var prev_keys := keys[..];
         if keyNum > 0 {
@@ -417,10 +422,26 @@ class BPTNode {
         assert 0 < idx ==> keys[idx-1]< keys[idx]; // idx larger than prev
         assert idx < keyNum ==> keys[idx] < keys[idx+1]; // idx bigger then next
         keyNum := keyNum+1; 
-        AddKeysContent();
+
+
+        // NEWEST COMMENT: here is the problem with updating Contents
+        // Dafny does not seem to understand that when we add new key Contents contains all the keys
+        // (we are still in process of separating the insert in an array into a separate function)
+
+        assert key !in Contents;
+        Contents := Contents + {key};
+        // TODO delete
+        // assert Valid();
+        // AddKeysContent();
+        assert old(Contents) + {key} == Contents;
+        // assert (set x | x in prev_keys[..(keyNum-1)]) == old(Contents);
+        // assert (set x | x in prev_keys[..(keyNum-1)]) + {key} == (set x | x in keys[..keyNum]);
+        assert Contents == set x | x in keys[..keyNum]; //may not hold
+        assert KeysInContents(); // may not hold
+        assert Valid();
     }
 
-    
+    // TODO prob delete
     ghost method AddKeysContent()
         // Adds all keys to the content 
         // only for leaves 
@@ -437,20 +458,23 @@ class BPTNode {
         assert KeysInRepr();
         assert this in Repr;
         // Contents := set x | x in keys[..keyNum] :: x;
-        Contents := {};
-        for i := 0 to keyNum 
-            invariant KeysInRepr()
-            invariant this in Repr
-            invariant children in Repr
-            invariant Sorted()
-            // invariant Repr == old(Repr) // QUESTION : why does this not hold 
-            invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] < keys[i]
-            invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] != keys[i]
-            invariant forall j :: 0 <= j < i ==> keys[j] in Contents
-            // invariant |Contents| == i // COMMENT : needed if checking length in keysInContent
-            { 
-                Contents := Contents + {keys[i]}; 
-            }
+        // Contents := {};
+        // for i := 0 to keyNum 
+        //     invariant KeysInRepr()
+        //     invariant this in Repr
+        //     invariant children in Repr
+        //     invariant Sorted()
+        //     // invariant Repr == old(Repr) // QUESTION : why does this not hold 
+        //     invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] < keys[i]
+        //     invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] != keys[i]
+        //     invariant forall j :: 0 <= j < i ==> keys[j] in Contents
+        //     // invariant |Contents| == i // COMMENT : needed if checking length in keysInContent
+        //     { 
+        //         Contents := Contents + {keys[i]}; 
+        //     }
+
+        Contents := set x | x in keys[..keyNum];
+
         assert KeysInContents();
         assert isLeaf;
         assert children in Repr;
