@@ -95,7 +95,7 @@ class BPTNode {
     // ************************************************ //
 
     ghost predicate HalfFull()
-        // if not root, all nodes in subtree contains more than ORDER/2 keys
+        // all non root nodes in subtree contains more than ORDER/2 keys
         reads this, Repr
         requires Valid()
     {
