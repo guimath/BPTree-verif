@@ -267,7 +267,8 @@ class BPTNode {
         //     (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
         // )) &&
         // (isLeaf == true ==> (Contents == set x | x in keys[..keyNum]))
-        &&
+        // (isLeaf ==> forall x :: x in keys[..keyNum] <==> x in Contents)
+        // &&
         forall i : int :: 0 <= i < keyNum ==> (
             keys[i] in Contents
         )
@@ -494,27 +495,46 @@ class BPTNode {
         assert KeysInRepr();
         assert this in Repr;
         // Contents := set x | x in keys[..keyNum] :: x;
-        Contents := {};
-        for i := 0 to keyNum 
-            invariant KeysInRepr()
-            invariant this in Repr
-            invariant children in Repr
-            invariant Sorted()
-            // invariant Repr == old(Repr) // QUESTION : why does this not hold 
-            invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] < keys[i]
-            invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] != keys[i]
-            invariant forall j :: 0 <= j < i ==> keys[j] in Contents
-            // invariant |Contents| == i // COMMENT : needed if checking length in keysInContent
-            { 
-                Contents := Contents + {keys[i]}; 
-            }
+        // Contents := {};
+        // for i := 0 to keyNum 
+        //     invariant KeysInRepr()
+        //     invariant this in Repr
+        //     invariant children in Repr
+        //     invariant Sorted()
+        //     // invariant Repr == old(Repr) // QUESTION : why does this not hold 
+        //     invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] < keys[i]
+        //     invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] != keys[i]
+        //     invariant forall j :: 0 <= j < i ==> keys[j] in Contents
+        //     // invariant |Contents| == i // COMMENT : needed if checking length in keysInContent
+        //     { 
+        //         Contents := Contents + {keys[i]}; 
+        //     }
 
-        // Contents := set x | x in keys[..keyNum];
+        Contents := set x | x in keys[..keyNum];
 
         assert KeysInContents();
         assert isLeaf;
         assert children in Repr;
         assert Valid();
+    }
+
+    lemma ContentsEqualsKeys() 
+        requires LengthOk()
+        requires Sorted()
+        requires isLeaf
+        // ensures |Contents| == keyNum
+    {
+        var seq_contents : seq<int> := [];
+        var set_contents : set<int> := {};
+        for i := 0 to keyNum 
+            invariant 0 <= i <= keyNum
+            invariant forall j :: 0 <= j < i ==> ( keys[j] in seq_contents && keys[j] in set_contents )
+        {
+            seq_contents := seq_contents + [keys[i]];
+            set_contents := set_contents + {keys[i]};
+            // assert |set_contents| ==  i + 1;
+        }
+
     }
 
     constructor Init()
