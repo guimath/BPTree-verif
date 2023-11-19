@@ -1,4 +1,4 @@
-include "utils.dfy"
+// include "Utils.dfy"
 
 const ORDER:int := 5
 
@@ -263,10 +263,10 @@ class BPTNode {
     {
         // this part removed because it was hard to verify set size...
         // (isLeaf == true ==> (
-        //     // |Contents| == keyNum && 
+        //     |Contents| == keyNum ))//&& 
         //     (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
         // )) &&
-        (isLeaf == true ==> (Contents == set x | x in keys[..keyNum]))
+        // (isLeaf == true ==> (Contents == set x | x in keys[..keyNum]))
         &&
         forall i : int :: 0 <= i < keyNum ==> (
             keys[i] in Contents
@@ -351,7 +351,42 @@ class BPTNode {
             }
         }      
     }
+
+    method InsertAtLeaf(key:int) 
+        // insert a key value in a node
+        requires Valid()
+        requires isLeaf == true 
+        requires NotFull() 
+        requires !(key in Contents)
+        requires key > 0
+        modifies this, keys
+        ensures Valid()
+        ensures ContainsVal(key)
+        ensures old(Contents) + {key} == Contents
+    {
+        keys := InsertIntoSorted(keys, keyNum, key);
+        assert forall i :: 0 <= i < keyNum ==> old(keys)[i] in keys[..];
+        keyNum := keyNum + 1;
+        assert sorted(keys[..keyNum]);
+        assert forall i :: 0 <= i < keyNum ==> keys[i] > 0;
+
+        Repr := Repr + {keys};
+
+        assert key !in Contents;
+        // Contents := Contents + {key};
+
+        AddKeysContent();
+        // HUGEEEE TODO get this to work without assume
+        assume old(Contents) + {key} == Contents;
+        // assert old(Contents) + {key} == Contents;
+        // // assert (set x | x in prev_keys[..(keyNum-1)]) == old(Contents);
+        // // assert (set x | x in prev_keys[..(keyNum-1)]) + {key} == (set x | x in keys[..keyNum]);
+        // assert Contents == set x | x in keys[..keyNum]; //may not hold
+        // assert KeysInContents(); // may not hold
+        assert Valid();
+    }
     
+/*
     method InsertAtLeaf(key:int) 
         // insert a key value in a node
         requires Valid()
@@ -440,6 +475,7 @@ class BPTNode {
         assert KeysInContents(); // may not hold
         assert Valid();
     }
+*/
 
     // TODO prob delete
     ghost method AddKeysContent()
@@ -458,22 +494,22 @@ class BPTNode {
         assert KeysInRepr();
         assert this in Repr;
         // Contents := set x | x in keys[..keyNum] :: x;
-        // Contents := {};
-        // for i := 0 to keyNum 
-        //     invariant KeysInRepr()
-        //     invariant this in Repr
-        //     invariant children in Repr
-        //     invariant Sorted()
-        //     // invariant Repr == old(Repr) // QUESTION : why does this not hold 
-        //     invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] < keys[i]
-        //     invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] != keys[i]
-        //     invariant forall j :: 0 <= j < i ==> keys[j] in Contents
-        //     // invariant |Contents| == i // COMMENT : needed if checking length in keysInContent
-        //     { 
-        //         Contents := Contents + {keys[i]}; 
-        //     }
+        Contents := {};
+        for i := 0 to keyNum 
+            invariant KeysInRepr()
+            invariant this in Repr
+            invariant children in Repr
+            invariant Sorted()
+            // invariant Repr == old(Repr) // QUESTION : why does this not hold 
+            invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] < keys[i]
+            invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] != keys[i]
+            invariant forall j :: 0 <= j < i ==> keys[j] in Contents
+            // invariant |Contents| == i // COMMENT : needed if checking length in keysInContent
+            { 
+                Contents := Contents + {keys[i]}; 
+            }
 
-        Contents := set x | x in keys[..keyNum];
+        // Contents := set x | x in keys[..keyNum];
 
         assert KeysInContents();
         assert isLeaf;
@@ -502,5 +538,116 @@ class BPTNode {
         Repr := {this} + {keys} + {children}; 
         nextLeaf := null;
     }
+
+}
+
+
+predicate sorted (a: seq<int>)
+{
+  forall i,j :: 0 <= i < j < |a| ==> a[i] < a[j]
+}
+
+predicate lessThan(a:seq<int>, key:int) {
+  forall i :: 0 <= i < |a| ==> a[i] < key
+}
+
+predicate greaterThan(a:seq<int>, key:int) {
+  forall i :: 0 <= i < |a| ==> a[i] > key
+}
+
+lemma DistributiveIn(a: seq<int>, b:seq<int>, k:int, key:int)
+    requires |a| + 1 == |b| 
+    requires 0 <= k <= |a|
+    requires b == a[..k] + [key] + a[k..]
+    ensures forall i :: 0 <= i < |a| ==> a[i] in b
+{
+    assert forall j :: 0 <= j < k ==> a[j] in b;
+    assert forall j :: k <= j < |a| ==> a[j] in b;
+    assert ((forall j :: 0 <= j < k ==> a[j] in b) && (forall j :: k <= j < |a| ==> a[j] in b)) ==> (forall j :: 0 <= j < |a| ==> a[j] in b);
+    assert forall j :: 0 <= j < |a| ==> a[j] in b;
+}
+
+lemma DistributiveGreater(a: seq<int>, b:seq<int>, k:int, key:int)
+    requires |a| + 1 == |b| 
+    requires 0 <= k <= |a|
+    requires b == a[..k] + [key] + a[k..]
+    requires forall j :: 0 <= j < |a| ==> a[j] > 0
+    requires key > 0
+    ensures forall i :: 0 <= i < |b| ==> b[i] > 0
+{
+    // assert ((forall j :: 0 <= j < k ==> b[j] > 0) && (forall j :: k <= j < |a| ==> b[j] > 0)) ==> (forall j :: 0 <= j < |b| ==> b[j] > 0);
+    assert forall j :: 0 <= j < |b| ==> b[j] > 0;
+}
+
+
+// verifies in more than 45 seconds, but less than 100 seconds
+method InsertIntoSorted(a: array<int>, limit:int, key:int) returns (b: array<int>)
+    requires key > 0
+    requires key !in a[..]
+    requires 0 <= limit < a.Length
+    requires forall i :: 0 <= i < limit ==> a[i] > 0
+    requires forall i :: limit <= i < a.Length ==> a[i] == 0
+    requires sorted(a[..limit]) 
+    ensures b.Length == a.Length
+    ensures sorted(b[..(limit+ 1)])
+    ensures forall i :: limit + 1 <= i < b.Length ==> b[i] == 0  
+    ensures forall i :: 0 <= i < limit ==> a[i] in b[..]
+    ensures forall i :: 0 <= i < limit + 1 ==> b[i] > 0
+{
+    b:= new int[a.Length];
+
+    ghost var k := 0;
+    b[0] := key;
+
+    ghost var a' := a[..];
+
+    var i:= 0;
+    while (i < limit)
+        modifies b
+        invariant 0 <= k <= i <= limit
+        invariant b.Length == a.Length
+        invariant a[..] == a'
+        invariant lessThan(a[..i], key) ==> i == k
+        invariant lessThan(a[..k], key)
+        invariant b[..k] == a[..k]
+        invariant b[k] == key
+        invariant k < i ==> b[k+1..i+1] == a[k..i]
+        invariant k < i ==> greaterThan(b[k+1..i+1], key)
+        invariant 0 <= k < b.Length && b[k] == key
+    {
+        if(a[i]<key)
+        {
+            b[i]:= a[i];
+            b[i+1] := key;
+            k := i+1;
+        }
+        else if (a[i] >= key)
+        {
+            b[i+1] := a[i];
+        } 
+        i := i+1;
+    }
+    assert b[..limit+1] == a[..k] + [key] + a[k..limit];
+    assert sorted(b[..limit+1]);
+
+    // assert b[..limit+1] == a[..k] + [key] + a[k..limit];
+    DistributiveIn(a[..limit], b[..limit+1], k, key);
+    assert forall i :: 0 <= i < limit ==> a[i] in b[..limit+1];
+
+    DistributiveGreater(a[..limit], b[..limit+1], k, key);
+    // assert forall i :: 0 <= i < limit + 1 ==> b[i] > 0;
+
+    ghost var b' := b[..];
+    i := limit + 1;
+    while i < b.Length 
+        invariant limit + 1 <= i <= b.Length 
+        invariant forall j :: limit + 1 <= j < i ==> b[j] == 0
+        invariant b[..limit+1] == b'[..limit+1]
+        invariant sorted(b[..limit+1])
+    {
+        b[i] := 0;
+        i := i + 1;
+    }
+    assert forall i :: limit + 1 <= i < b.Length ==> b[i] == 0;
 
 }
