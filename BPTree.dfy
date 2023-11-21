@@ -35,15 +35,15 @@ class BPTree {
         ensures current.isLeaf    && newNode.isLeaf
         ensures current.keyNum > 0  && newNode.keyNum > 0
         ensures current.keys[current.keyNum-1] < newNode.keys[0]
-        // COMMENT: ensures after this not verified
-        // ensures old(current.Contents) < (current.Contents + newNode.Contents)
-        // ensures val in (current.Contents + newNode.Contents)
-        // ensures current.Contents !! newNode.Contents
         ensures fresh(newNode)
+        // COMMENT: ensures after this not verified
+        ensures old(current.Contents) < (current.Contents + newNode.Contents)
+        ensures val in (current.Contents + newNode.Contents)
+        ensures current.Contents !! newNode.Contents
         ensures forall k :: k in newNode.Contents ==> (newNode.keys[0] <= k)
         ensures forall k :: k in current.Contents ==> (k < newNode.keys[0])
     { 
-
+/*
         newNode := new BPTNode.Init();
         var temp := new int[ORDER + 1]; // storing all keys and the new value in temporary list
         var idx := current.GetInsertIndex(val);
@@ -155,11 +155,12 @@ class BPTree {
 
         assert forall k :: k in newNode.keys[..newNode.keyNum] ==> (newNode.keys[0] <= k);
         assert forall k :: k in current.keys[..current.keyNum] ==> (k < newNode.keys[0]);
-
+        
         // COMMENT: unable to verify next 2 assert ==> again problems with understanding equalities betweeen set and sequence
         // COMMENT: when I changed keysInContents to be more similar, timeout after 300 seconds
-        assert forall k :: k in newNode.keys[..newNode.keyNum] <==> k in newNode.Contents;
-        assert forall k :: k in current.keys[..current.keyNum] <==> k in current.Contents;
+        // assert forall k :: k in newNode.keys[..newNode.keyNum] <==> k in newNode.Contents;
+        // assert forall k :: k in current.keys[..current.keyNum] <==> k in current.Contents;
+    */
     }
 
 
@@ -283,8 +284,9 @@ class BPTree {
     method Insert(val: int)
         requires Valid()
         modifies Repr
-        // ensures Valid()
-        // ensures val > 0 ==> Contents == old(Contents) + {val}
+        ensures Valid()
+        ensures val > 0 ==> Contents == old(Contents) + {val}
+        ensures val <= 0 ==> Contents == old(Contents)
     {
         // edge case 1 : negative val  
         if val <= 0 {
@@ -315,8 +317,13 @@ class BPTree {
         }
         else { // root is BPTNode && val > 0
             var updateParent : bool;
+            assert this !in root.Repr;
             root, updateParent := InsertHelper(root, false, val);
+            assert updateParent == false;
+            assert val in root.Contents;
             assert root.Valid();
+            Contents := root.Contents;
+            Repr := root.Repr + {this};
             return;
         }
     }
@@ -331,6 +338,9 @@ class BPTree {
         ensures newParent.Valid()
         ensures forall k :: k in firstChild.Contents ==> k in newParent.Contents
         ensures forall k :: k in secondChild.Contents ==> k in newParent.Contents
+        ensures firstChild.Valid()
+        ensures secondChild.Valid()
+        // ensures newParent.Contents == firstChild.Contents + secondChild.Contents
         ensures fresh(newParent)
     {
         newParent := new BPTNode.Init();
@@ -342,108 +352,109 @@ class BPTree {
         newParent.height := firstChild.height +1;
         newParent.Contents := firstChild.Contents + secondChild.Contents;
         newParent.Repr := newParent.Repr + firstChild.Repr + secondChild.Repr; 
+        assert old(firstChild) == firstChild;
+        assert old(secondChild) == secondChild;
         return;  
     }
 
-/*
+
     // COMMENT: every part verifying with verif error: "This postcondition might not hold: node.ContainsVal(x) || newNode.ContainsVal(x)" (but no red lines, this caused because not all paths shown)
     // COMMENT: but whole function causes timeout in 100 seconds (I think this was before adding the createNewParent, and with this first part alone verifies faster, but together seems not)
     // new node is either new Root or a new node
-    // TODO prob remove all parent clauses
     static method InsertHelper(node:BPTNode, hasParent:bool, x:int) returns (newNode:BPTNode, updateParent:bool)
-        // requires (parent!=null) ==> (node in parent.Repr&& parent.height == node.height+1 && parent !in node.Repr)
-        // requires node == null || (node.Valid())
-        // requires node == null ==> parent == null
         requires node.Valid()
         requires x !in node.Contents
-        // requires parent!=null ==> parent.Valid()
-        // requires parent!=null ==> parent.isLeaf==false
-        // requires parent!= null ==> parent !in node.Repr
         requires x > 0
         modifies node, node.Repr
-        // modifies parent
         ensures newNode.Valid() 
         ensures node.Valid()
         ensures node.ContainsVal(x) || newNode.ContainsVal(x)
         ensures newNode == node || fresh(newNode)
-        // ensures parent != null ==> parent.Valid()
-        // ensures this !in newNode.Repr 
-        // ensures parent == null ==> newNode.ContainsVal(x) && old(node.Contents) + {x} == newNode.Contents
-        // ensures old(node.Contents) + {x} == node.Contents + newNode.Contents
+        ensures hasParent == false ==> updateParent == false
+        ensures old(node.Contents) + {x} == node.Contents + newNode.Contents
+        ensures hasParent == false ==> newNode.Contents == old(node.Contents) + {x}                                                         // if it does not have parent, it is the root node, so return value must be the new root, so it def has new value in the Contents 
         decreases  node.height
-    //    ensures parent == null ==> updateParent == false
-    //    ensures parent !=null ==> (parent.Contents == old(parent.Contents+{x}))
-    //    ensures node !=null ==> node.Valid()
-    //    ensures node == old(node)
-    //    ensures parent == old(parent)
-    //    decreases if node == null then {} else node.Repr 
     {
-        newNode := new BPTNode.Init();
-        updateParent := false;
-        // node is leaf == no more recursion
-        if node.isLeaf {
-            assert node.Valid(); 
-            // node.keyNum < ORDER == there is place for new key in the leaf
-            if node.keyNum < ORDER {
-                //inserting in the leaf (no additional node required)
-                node.InsertAtLeaf(x);
-                newNode := node;
-                updateParent := false;
-                return;
-            } 
+        // newNode := new BPTNode.Init();
+        // updateParent := false;
+        // // // node is leaf == no more recursion
+        // if node.isLeaf {
+        //     assert node.Valid(); 
+        //     // node.keyNum < ORDER == there is place for new key in the leaf
+        //     if node.keyNum < ORDER {
+        //         //inserting in the leaf (no additional node required)
+        //         node.InsertAtLeaf(x);
+        //         newNode := node;
+        //         updateParent := false;
 
-            // not enough space in the leaf ==> splitting the leaf
-            var splitNode: BPTNode := SplitLeaf(node, x);
-            assert node.ContainsVal(x) || splitNode.ContainsVal(x);
-            // hasParent==false <==> node was root  
-            if !hasParent {
-                // creates new root at height +1
-                newNode := CreateNewParent(node, splitNode);
-                updateParent  := false; 
-                return;  
-            }  
-            // if not, we need to update parent node
-            updateParent := true;
-            newNode := splitNode;
-            return;
-        } 
+        //         assert newNode.Valid();
+        //         assert node.Valid();
+        //         assert node.ContainsVal(x) || newNode.ContainsVal(x);
+        //         assert newNode == node; 
+        //         assert newNode == node ==> (newNode == node || fresh(newNode));
+        //         assert newNode == node || fresh(newNode);
 
-        // // node is not leaf 
-        // if !node.isLeaf {
-        assert node.isLeaf == false;
-        var innerUpdateParent := false;
-        var innerNewNode : BPTNode;
+        //         return;
+        //     } 
 
-        // COMMENT: one of the next two lines prolongs the verification (but next two lines and everything before verifies in less than 70 seconds)
-        var idx := GetInsertIndex(node.keys, node.keyNum, x); // node.GetInsertIndex(x);
-        innerNewNode, innerUpdateParent := InsertHelper(node.children[idx], true, x);
-        // // if innerUpdateParent && node.keyNum == ORDER {
-        if !innerUpdateParent {
-            node.Contents := {};
-            node.Repr := {node} + {node.children} + {node.keys};
-            for i:= 0 to node.keyNum+1 {
-                node.Contents := node.Contents + node.children[i].Contents;
-                node.Repr := node.Repr + node.children[i].Repr;
-            }
-            newNode := node;
-            updateParent := false;
-            return;
-        }
-        
-        if node.keyNum < ORDER {
-            InsertAtNode(node, innerNewNode);
-            newNode := node; // TODO check that is note erasing 
-            updateParent := false;
-            return; 
-        } 
-        newNode := SplitNode(node, newNode);
-        updateParent := true;
-        return;
+        //     // not enough space in the leaf ==> splitting the leaf
+        //     var splitNode: BPTNode := SplitLeaf(node, x);
+        //     assert node.ContainsVal(x) || splitNode.ContainsVal(x);
+        //     // hasParent==false <==> node was root  
+        //     if !hasParent {
+        //         // creates new root at height +1
+        //         newNode := CreateNewParent(node, splitNode);
+        //         updateParent  := false; 
+
+        //         assert newNode.Valid();
+        //         assert node.Valid();
+        //         // assert node.ContainsVal(x) || newNode.ContainsVal(x);
+        //         // assert newNode == node || fresh(newNode);
+
+        //         return;  
+        //     }  
+        //     // if not, we need to update parent node
+        //     updateParent := true;
+        //     newNode := splitNode;
+        //     return;
+        // } 
+
+        // // // node is not leaf 
+        // // if !node.isLeaf {
+        // assert node.isLeaf == false;
+        // var innerUpdateParent := false;
+        // var innerNewNode : BPTNode;
+
+        // // COMMENT: recursive call prolongs the verification (but next two lines and everything before verifies in less than 70 seconds)
+        // var idx := GetInsertIndex(node.keys, node.keyNum, x); // node.GetInsertIndex(x);
+        // innerNewNode, innerUpdateParent := InsertHelper(node.children[idx], true, x);
+        // // // if innerUpdateParent && node.keyNum == ORDER {
+        // if !innerUpdateParent {
+        //     node.Contents := {};
+        //     node.Repr := {node} + {node.children} + {node.keys};
+        //     for i:= 0 to node.keyNum+1 {
+        //         node.Contents := node.Contents + node.children[i].Contents;
+        //         node.Repr := node.Repr + node.children[i].Repr;
+        //     }
+        //     newNode := node;
+        //     updateParent := false;
+        //     return;
         // }
+        
+        // if node.keyNum < ORDER {
+        //     InsertAtNode(node, innerNewNode);
+        //     newNode := node; // TODO check that is note erasing 
+        //     updateParent := false;
+        //     return; 
+        // } 
+        // newNode := SplitNode(node, newNode);
+        // updateParent := true;
+        // return;
+        // // }
     }
-*/
 
-/*
+
+
     // COMMENT : Whole find function verifies
     method Find(val: int) returns (inTree: bool)
         requires Valid()
@@ -462,68 +473,68 @@ class BPTree {
         ensures node.ContainsVal(val) <==> inTree
         decreases node.Repr
     {        
-        // if node.keyNum == 0 {
-        //     assert !node.ContainsVal(val); // Having this assert as well as the second one results in timeout
-        //     return false;
-        // }
-        // if node.isLeaf == true { 
-        //     var keyNum := node.keyNum;
-        //     var i := 0;
-        //     while i< keyNum
-        //         invariant forall j: int :: 0 <= j < i<= keyNum ==> node.keys[j] != val
-        //         invariant 0 <= i <= keyNum
-        //     {
-        //         if node.keys[i] == val {return true;}
-        //         i := i+1;
-        //     }
-        //     assert !node.ContainsVal(val); // Having this assert as well as the second one results in timeout
-        //     return false;
-        // }
-        // if node.keyNum > 0 && !node.isLeaf {
-        //     var idx := node.keyNum;
-        //     for i := 0 to node.keyNum 
-        //         invariant 0 <= i <= node.keyNum 
-        //         invariant 0 < i ==> node.keys[i-1] < val
-        //     {
-        //         if val == node.keys[i]  {
-        //             assert node.ContainsVal(val); // Having this assert as well as the second one results in timeout
-        //             return true; // verifies assert node.ContainsVal(val);
-        //         }
-        //         if val < node.keys[i] {
-        //             idx := i;
-        //             assert idx == i;
-        //             assert 0 < idx ==> node.keys[idx-1] < val;
-        //             break;
-        //         }
-        //     }   
-        //     assert idx < node.keyNum ==> val < node.keys[idx];
-        //     assert 0< idx ==> node.keys[idx-1] < val;
-        //     assert node.Hierarchy();
+        if node.keyNum == 0 {
+            assert !node.ContainsVal(val); // Having this assert as well as the second one results in timeout
+            return false;
+        }
+        if node.isLeaf == true { 
+            var keyNum := node.keyNum;
+            var i := 0;
+            while i< keyNum
+                invariant forall j: int :: 0 <= j < i<= keyNum ==> node.keys[j] != val
+                invariant 0 <= i <= keyNum
+            {
+                if node.keys[i] == val {return true;}
+                i := i+1;
+            }
+            assert !node.ContainsVal(val); // Having this assert as well as the second one results in timeout
+            return false;
+        }
+        if node.keyNum > 0 && !node.isLeaf {
+            var idx := node.keyNum;
+            for i := 0 to node.keyNum 
+                invariant 0 <= i <= node.keyNum 
+                invariant 0 < i ==> node.keys[i-1] < val
+            {
+                if val == node.keys[i]  {
+                    assert node.ContainsVal(val); // Having this assert as well as the second one results in timeout
+                    return true; // verifies assert node.ContainsVal(val);
+                }
+                if val < node.keys[i] {
+                    idx := i;
+                    assert idx == i;
+                    assert 0 < idx ==> node.keys[idx-1] < val;
+                    break;
+                }
+            }   
+            assert idx < node.keyNum ==> val < node.keys[idx];
+            assert 0< idx ==> node.keys[idx-1] < val;
+            assert node.Hierarchy();
             
-        //     assert forall i: int :: 0 <= i < node.keyNum ==>
-        //         (forall k :: k in node.children[i].Contents ==> 
-        //             k < node.keys[i]);
-        //     assert 1<= idx < node.keyNum+1 ==> 
-        //         (forall k :: k in node.children[idx-1].Contents ==> 
-        //                 k < node.keys[idx-1]);
-        //     assert 1<= idx < node.keyNum+1 ==> 
-        //         (forall k :: k in node.children[idx-1].Contents ==> 
-        //                 k < val);       
-        //     assert 1 <= idx < node.keyNum+1 ==> !node.children[idx-1].ContainsVal(val);
-        //     assert forall j :: 0< j < idx ==> !node.children[j].ContainsVal(val);
+            assert forall i: int :: 0 <= i < node.keyNum ==>
+                (forall k :: k in node.children[i].Contents ==> 
+                    k < node.keys[i]);
+            assert 1<= idx < node.keyNum+1 ==> 
+                (forall k :: k in node.children[idx-1].Contents ==> 
+                        k < node.keys[idx-1]);
+            assert 1<= idx < node.keyNum+1 ==> 
+                (forall k :: k in node.children[idx-1].Contents ==> 
+                        k < val);       
+            assert 1 <= idx < node.keyNum+1 ==> !node.children[idx-1].ContainsVal(val);
+            assert forall j :: 0< j < idx ==> !node.children[j].ContainsVal(val);
             
 
-        //     assert forall j :: idx < j < node.keyNum+1 ==> !node.children[j].ContainsVal(val);
+            assert forall j :: idx < j < node.keyNum+1 ==> !node.children[j].ContainsVal(val);
 
-        //     assert forall j :: 0 < j < node.keyNum+1 ==> j != idx ==> !node.children[j].ContainsVal(val);
+            assert forall j :: 0 < j < node.keyNum+1 ==> j != idx ==> !node.children[j].ContainsVal(val);
 
-        //     inTree := FindHelper(node.children[idx], val);
-        //     // assert 0< idx ==> !node.children[idx-1].ContainsVal(val);
-        //     assert node.ContainsVal(val) <==> inTree; //This assert doesn't complete
-        //     return inTree; // Why success ?
-        // }
+            inTree := FindHelper(node.children[idx], val);
+            // assert 0< idx ==> !node.children[idx-1].ContainsVal(val);
+            assert node.ContainsVal(val) <==> inTree; //This assert doesn't complete
+            return inTree; // Why success ?
+        }
     }
-*/
+
     
  /*   method Main()
         modifies this, Repr
@@ -540,6 +551,28 @@ class BPTree {
         print("Test passed: Value 42 added to the root.");
 
     } */
+
+    method experiment()
+        modifies this, Repr
+    {
+        root := new BPTNode.Init();
+        Repr := root.Repr + {this};
+        Contents := root.Contents;
+        
+        assert root.Valid(); 
+        assert Valid();
+        assert this !in root.Repr;
+
+        var newNode : BPTNode? := new BPTNode.Init();
+        assert root.Valid();
+        newNode := root;
+        assert newNode.Valid();
+
+        root := null;
+        assert this !in newNode.Repr;
+        assert newNode.Valid();
+
+    }
 
     ghost predicate HalfKeys()
         reads this, root, Repr
