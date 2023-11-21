@@ -262,10 +262,10 @@ class BPTNode {
         requires KeysInRepr()
     {
         // this part removed because it was hard to verify set size...
-        // (isLeaf == true ==> (
+        (isLeaf == true ==> (
         //     |Contents| == keyNum ))//&& 
-        //     (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
-        // )) &&
+            (forall num: int :: (num in Contents ==> num in keys[..keyNum]))
+        )) &&
         // (isLeaf == true ==> (Contents == set x | x in keys[..keyNum]))
         // (isLeaf ==> forall x :: x in keys[..keyNum] <==> x in Contents)
         // &&
