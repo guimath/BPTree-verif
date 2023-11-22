@@ -119,9 +119,8 @@ class BPTree {
                 
         current.Repr := {current} + {current.children} + {current.keys};
         assert current.KeysInRepr();
-        assert current.ValidBeforeContentUpdate();
-        current.AddKeysContent();
-        assert current.Valid(); // independantly verified
+        current.Contents := set x | x in current.keys[..current.keyNum];
+        assert current.Valid();
         assert current.isLeaf; 
         assert current.keyNum > 0; 
 
@@ -148,14 +147,10 @@ class BPTree {
 
         newNode.Repr := {newNode} + {newNode.children} + {newNode.keys};
         assert newNode.KeysInRepr();
-        assert newNode.ValidBeforeContentUpdate();
-        newNode.AddKeysContent();
+        newNode.Contents := set x | x in newNode.keys[..newNode.keyNum];
         assert newNode.Valid();// independantly verified
         assert newNode.isLeaf; 
         assert newNode.keyNum > 0;
-
-        assert forall k :: k in newNode.keys[..newNode.keyNum] ==> (newNode.keys[0] <= k);
-        assert forall k :: k in current.keys[..current.keyNum] ==> (k < newNode.keys[0]);s[..newNode.keyNum] <==> k in newNode.Contents;
     }
 
     // not verified
