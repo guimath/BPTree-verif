@@ -372,175 +372,22 @@ class BPTNode {
         keyNum := keyNum + 1;
         assert sorted(keys[..keyNum]);
         assert forall i :: 0 <= i < keyNum ==> keys[i] > 0;
+        assert forall i,j :: 0<= i< j < keyNum ==> ( keys[i] < keys[j] );
         assert Sorted();
-
+        assert key in keys[..keyNum];
         Repr := Repr + {keys};
 
-        // assert key !in Contents;
-        // assert forall k :: k in old(keys)[..(keyNum-1)] ==> k in Contents;
-        // Contents := Contents + {key};
-        // assert forall k :: k in old(keys)[..(keyNum-1)] ==> k in old(Contents);
-        // assert Contents == old(Contents) + {key};
-        // assert forall k :: k in old(keys)[..(keyNum-1)] ==> k in keys[..keyNum];
-        
-        // assert forall i : int :: 0 <= i < keyNum ==> ( keys[i] in Contents );
-
         Contents := set x | x in keys[..keyNum];
-        
-        // AddKeysContent();
+        assert forall k :: k in old(keys)[..(keyNum-1)] ==> k in keys[..keyNum];
+        assert forall k :: k in old(Contents) ==> k in keys[..keyNum];
+        assert old(Contents) <= Contents;
+        assert forall k :: k in Contents ==> (k!=key ==> k in old(Contents));
+        assert key in Contents;
         assert KeysInContents();
-
-        assert key in keys[..keyNum];    
-        // assert forall k :: k in keys[..keyNum] ==> k in Contents;
-        // assert key in Contents;
-
-        // assert keyNum >= 1;
-        // assert exists k :: k in keys[..(keyNum-1)] && k !in old(Contents) ==> k == key;
-        
-        
-        // HUGEEEE TODO get this to work without assume
-        assume old(Contents) + {key} == Contents;
-        // assert old(Contents) + {key} == Contents;
-        // assert (set x | x in prev_keys[..(keyNum-1)]) == old(Contents);
-        // assert (set x | x in prev_keys[..(keyNum-1)]) + {key} == (set x | x in keys[..keyNum]);
-        // assert Contents == set x | x in keys[..keyNum]; //may not hold
-        // assert KeysInContents(); // may not hold
+        assert old(Contents) + {key} == Contents;
         assert Valid();
     }
     
-/*
-    method InsertAtLeaf(key:int) 
-        // insert a key value in a node
-        requires Valid()
-        requires isLeaf == true 
-        requires NotFull() 
-        requires !(key in Contents)
-        requires key > 0
-        modifies this, keys
-        ensures Valid()
-        ensures ContainsVal(key)
-        ensures old(Contents) + {key} == Contents
-    {
-
-        var idx := GetInsertIndex(key);
-        ghost var prev_keys := keys[..];
-        if keyNum > 0 {
-            assert idx < keyNum ==> key < keys[idx];
-            assert 0< idx < keyNum ==> keys[idx-1] < key;
-            // shifting
-            if idx < keyNum {
-                var i:=keyNum-1;
-                ghost var rep_key := keys[idx];
-
-                while idx <= i
-                    modifies keys 
-                    invariant idx-1<= i 
-                    invariant (0 <= idx < keyNum) ==> key < keys[idx]
-                    invariant (0 <  idx < keyNum) ==> keys[idx-1] < key
-                    invariant rep_key == keys[idx] 
-                    invariant forall j: int :: 0 <= j < idx ==> (
-                        keys[j] < keys[j+1]
-                    )   
-                    invariant forall j: int :: 0 <= j <= i ==> ( // i = idx -1 
-                        keys[j] == prev_keys[j] // untouched part of array
-                    )   
-                    invariant forall j: int :: i < j < keyNum ==> ( // end : i = idx -1 
-                        keys[j+1] == prev_keys[j]
-                    )  
-                    invariant forall j: int :: keyNum < j < ORDER ==> ( // end : i = idx -1 
-                        keys[j] == 0
-                    )  
-                {
-                    keys[i+1] := keys[i];
-                    i := i-1;
-                }
-
-                assert i == idx -1;
-                assert forall j: int :: idx < j < keyNum ==> ( 
-                    keys[j] == prev_keys[j-1]
-                );
-                // assert  keys[0..idx] == prev_keys[0..idx];
-                // assert  keys[idx+1..keyNum] == prev_keys[idx..keyNum-1];
-                assert forall j: int :: idx < j < keyNum ==> ( // previous array was sorted so this is also
-                    prev_keys[j-1] < prev_keys[j]
-                );   
-                assert forall j: int :: idx < j < keyNum ==> ( // previous array was sorted so this is also
-                    keys[j] < keys[j+1]
-                );   
-            }
-        }
-        keys[idx] := key;
-        assert forall j: int :: 0 <= j < idx ==> ( //first part sorted
-            keys[j] < keys[j+1] 
-        );   
-        assert forall j: int :: idx < j < keyNum ==> ( //sec part sorted
-            keys[j] < keys[j+1]
-        );   
-        assert 0 < idx ==> keys[idx-1]< keys[idx]; // idx larger than prev
-        assert idx < keyNum ==> keys[idx] < keys[idx+1]; // idx bigger then next
-        keyNum := keyNum+1; 
-
-
-        // NEWEST COMMENT: here is the problem with updating Contents
-        // Dafny does not seem to understand that when we add new key Contents contains all the keys
-        // (we are still in process of separating the insert in an array into a separate function)
-
-        assert key !in Contents;
-        Contents := Contents + {key};
-        // TODO delete
-        // assert Valid();
-        // AddKeysContent();
-        assert old(Contents) + {key} == Contents;
-        // assert (set x | x in prev_keys[..(keyNum-1)]) == old(Contents);
-        // assert (set x | x in prev_keys[..(keyNum-1)]) + {key} == (set x | x in keys[..keyNum]);
-        assert Contents == set x | x in keys[..keyNum]; //may not hold
-        assert KeysInContents(); // may not hold
-        assert Valid();
-    }
-*/
-
-    // TODO prob delete
-    ghost method AddKeysContent()
-        // Adds all keys to the content 
-        // only for leaves 
-        modifies this
-        requires ValidBeforeContentUpdate()
-        requires exists k:int :: k in keys[..keyNum] && k !in Contents
-        requires keyNum > 0
-        requires isLeaf
-        ensures Valid()
-        ensures KeysInContents()
-    {
-        assert this in Repr;
-        assert children in Repr;
-        Repr := Repr + {keys};
-        assert children in Repr;
-        assert KeysInRepr();
-        assert this in Repr;
-        // Contents := set x | x in keys[..keyNum] :: x;
-        // Contents := {};
-        // for i := 0 to keyNum 
-        //     invariant KeysInRepr()
-        //     invariant this in Repr
-        //     invariant children in Repr
-        //     invariant Sorted()
-        //     // invariant Repr == old(Repr) // QUESTION : why does this not hold 
-        //     invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] < keys[i]
-        //     invariant i < keyNum ==> forall j :: 0 < j < i ==> keys[j] != keys[i]
-        //     invariant forall j :: 0 <= j < i ==> keys[j] in Contents
-        //     // invariant |Contents| == i // COMMENT : needed if checking length in keysInContent
-        //     { 
-        //         Contents := Contents + {keys[i]}; 
-        //     }
-
-        Contents := set x | x in keys[..keyNum];
-
-        assert KeysInContents();
-        assert isLeaf;
-        assert children in Repr;
-        assert Valid();
-    }
-
     lemma ContentsEqualsKeys() 
         requires LengthOk()
         requires Sorted()
@@ -637,6 +484,8 @@ method InsertIntoSorted(a: array<int>, limit:int, key:int) returns (b: array<int
     ensures forall i :: 0 <= i < limit ==> a[i] in b[..]
     ensures forall i :: 0 <= i < limit + 1 ==> b[i] > 0
     ensures key in b[..(limit+1)]
+    ensures forall k :: k in a[..limit] ==> k in b[..(limit+1)]
+    ensures forall k :: k in b[..(limit+1)] ==> (k!=key ==> k in a[..limit])
 {
     b:= new int[a.Length];
 
