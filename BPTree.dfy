@@ -15,13 +15,14 @@ class BPTree {
         ensures Contents == {}
     { 
         root := null;
-        Repr := {this}; // TODO maybe we should add this in Repr
+        Repr := {this};
         Contents := {};
     } 
 
-    // OVERALL COMMENT: most of the functions are commented because we often get timeout. Do check comment line before each function
+    // OVERALL COMMENT: Most of the functions should be commented other wise you will get timeout. 
+    // OVERALL COMMENT: Do check comment line before each function to see if was successfully verified
 
-
+    // partially verified
     // COMMENT: newNode and current both independantly can verify the first three ensures (if you comment other part)
     // but if I add them both verification times out (tried with no limit, no result after ~10min) 
     static method SplitLeaf(current:BPTNode, val:int) returns(newNode:BPTNode)
@@ -38,13 +39,13 @@ class BPTree {
         ensures current.keys[current.keyNum-1] < newNode.keys[0]
         ensures fresh(newNode)
         // these ensures do not verify
-        ensures old(current.Contents) < (current.Contents + newNode.Contents)
+        // ensures old(current.Contents) < (current.Contents + newNode.Contents)
+        ensures old(current.Contents) + {val} == (current.Contents + newNode.Contents)
         ensures val in (current.Contents + newNode.Contents)
         ensures current.Contents !! newNode.Contents
         ensures forall k :: k in newNode.Contents ==> (newNode.keys[0] <= k)
         ensures forall k :: k in current.Contents ==> (k < newNode.keys[0])
     { 
-/*
         newNode := new BPTNode.Init();
         var temp := new int[ORDER + 1]; // storing all keys and the new value in temporary list
         var idx := current.GetInsertIndex(val);
@@ -88,7 +89,6 @@ class BPTree {
         current.nextLeaf := newNode;
 
         // ************* current ************* // 
-        // TODO OPTIMIZE 
         for i := 0 to current.keyNum  
             modifies current.keys
             invariant 0 <= i <= current.keyNum
@@ -155,19 +155,10 @@ class BPTree {
         assert newNode.keyNum > 0;
 
         assert forall k :: k in newNode.keys[..newNode.keyNum] ==> (newNode.keys[0] <= k);
-        assert forall k :: k in current.keys[..current.keyNum] ==> (k < newNode.keys[0]);
-        
-        // COMMENT: unable to verify next 2 assert ==> again problems with understanding equalities betweeen set and sequence
-        // COMMENT: when I changed keysInContents to be more similar, timeout after 300 seconds
-        // assert forall k :: k in newNode.keys[..newNode.keyNum] <==> k in newNode.Contents;
-        // assert forall k :: k in current.keys[..current.keyNum] <==> k in current.Contents;
-    */
+        assert forall k :: k in current.keys[..current.keyNum] ==> (k < newNode.keys[0]);s[..newNode.keyNum] <==> k in newNode.Contents;
     }
 
-    // COMMENT: splitNode does not work currently
-    // // adds newnode to current node 
-
-
+    // not verified
     static method SplitNode(current:BPTNode, child:BPTNode) returns(newNode:BPTNode)
         modifies current, current.Repr
         requires current.Valid()
@@ -186,6 +177,17 @@ class BPTree {
         ensures current.Contents !! newNode.Contents // disjoint
         ensures old(current.Contents)+child.Contents == current.Contents + newNode.Contents // all values kept
     {
+        // assume fresh(newNode);
+        // assume !current.isLeaf && !newNode.isLeaf;
+        // assume current.Valid() && newNode.Valid();
+        // assume child.Valid();
+        // assume old(child.Contents) == child.Contents;
+        // assume current.HalfFull() && newNode.HalfFull();
+        // assume current.keyNum > 0 && newNode.keyNum > 0;
+        // assume current.keys[current.keyNum-1] < newNode.keys[0];
+        // assume old(current.Contents) < (current.Contents + newNode.Contents);
+        // assume current.Contents !! newNode.Contents;
+        // assume old(current.Contents)+child.Contents == current.Contents + newNode.Contents;
         newNode := new BPTNode.Init();
         var newInternal: BPTNode := new BPTNode.Init();
         var tempKey := new int[ORDER + 1];
@@ -243,8 +245,7 @@ class BPTree {
         
     }  
   
-
-    // // COMMENT: not even sure if we successfully verified this or got timeout
+    // not verified
     static method InsertInNode(node:BPTNode, newNode:BPTNode) 
         requires node.Valid()
         requires newNode.Valid()
@@ -254,8 +255,7 @@ class BPTree {
         modifies node, node.keys, node.children
         ensures node.Valid()
         ensures (newNode in node.Repr)
-    {
-        /*
+    { 
         var idx := node.GetInsertIndex(newNode.keys[0]);
         if idx < node.keyNum {
             for j := node.keyNum-1 downto idx
@@ -279,13 +279,11 @@ class BPTree {
         node.keyNum := node.keyNum + 1;
         node.children[idx + 1] := newNode;
         node.Repr := node.Repr + newNode.Repr;
-        */
     }
 
     
-
-    // COMMENT: this is who knows which version of insert, but having constant trouble with iterating through arrays and modifying them and showing that they keep the sorted properties, often getting timeout
-    
+    // partially verifies
+    // Last part strange problem as soon as you modify root. 
     method Insert(val: int)
         requires Valid()
         modifies Repr
@@ -296,7 +294,7 @@ class BPTree {
         // edge case 1 : negative val  
         if val <= 0 {
             assert Valid();
-            return;// TODO return error 
+            return;
         }
         // edge case 2 : val already in tree *
         var valInTree := Find(val);
@@ -324,6 +322,7 @@ class BPTree {
             var updateParent : bool;
             assert this !in root.Repr;
             root, updateParent := InsertHelper(root, false, val);
+            assert this !in root.Repr; // problem here where it seems like writing to the same pointer complicates verification
             assert updateParent == false;
             assert val in root.Contents;
             assert root.Valid();
@@ -333,19 +332,15 @@ class BPTree {
         }
     }
 
-
+    // fully verifies
     static method CreateNewParent(firstChild:BPTNode, secondChild:BPTNode) returns (newParent:BPTNode) 
         requires firstChild.Valid() && !firstChild.Empty()
         requires secondChild.Valid() && !secondChild.Empty()
         requires firstChild.height == secondChild.height
-        requires forall k :: k in firstChild.Contents ==> (k < secondChild.keys[0])
-        requires forall k :: k in secondChild.Contents ==> (secondChild.keys[0] <= k)
+        requires (forall k :: k in firstChild.Contents ==> (k < secondChild.keys[0]))
+        requires (forall k :: k in secondChild.Contents ==> (secondChild.keys[0] <= k))
         ensures newParent.Valid()
-        ensures forall k :: k in firstChild.Contents ==> k in newParent.Contents
-        ensures forall k :: k in secondChild.Contents ==> k in newParent.Contents
-        ensures firstChild.Valid()
-        ensures secondChild.Valid()
-        // ensures newParent.Contents == firstChild.Contents + secondChild.Contents
+        ensures newParent.Contents == firstChild.Contents + secondChild.Contents 
         ensures fresh(newParent)
     {
         newParent := new BPTNode.Init();
@@ -356,33 +351,32 @@ class BPTree {
         newParent.isLeaf := false;
         newParent.height := firstChild.height +1;
         newParent.Contents := firstChild.Contents + secondChild.Contents;
+        assert firstChild in firstChild.Repr;
+        assert secondChild in secondChild.Repr;
         newParent.Repr := newParent.Repr + firstChild.Repr + secondChild.Repr; 
-        assert old(firstChild) == firstChild;
-        assert old(secondChild) == secondChild;
-        return;  
+        assert newParent.Valid();    
+        return;   
     }
 
 
-    // COMMENT: every part verifying with verif error: "This postcondition might not hold: node.ContainsVal(x) || newNode.ContainsVal(x)" (but no red lines, this caused because not all paths shown)
-    // COMMENT: but whole function causes timeout in 100 seconds (I think this was before adding the createNewParent, and with this first part alone verifies faster, but together seems not)
-    // new node is either new Root or a new node
+    // partially verifies
+    // time out for second part (everything with recursion after the isLeaf branch)
     static method InsertHelper(node:BPTNode, hasParent:bool, x:int) returns (newNode:BPTNode, updateParent:bool)
         requires node.Valid()
         requires x !in node.Contents
         requires x > 0
         modifies node, node.Repr
-        ensures newNode.Valid() 
-        ensures node.Valid()
-        ensures node.ContainsVal(x) || newNode.ContainsVal(x)
-        ensures newNode == node || fresh(newNode)
-        ensures hasParent == false ==> updateParent == false
-        ensures old(node.Contents) + {x} == node.Contents + newNode.Contents
-        ensures hasParent == false ==> newNode.Contents == old(node.Contents) + {x}                                                         // if it does not have parent, it is the root node, so return value must be the new root, so it def has new value in the Contents 
-        decreases  node.height
+        ensures  newNode.Valid() && node.Valid()              
+        ensures  node.ContainsVal(x) || newNode.ContainsVal(x)
+        ensures  newNode == node || fresh(newNode)
+        ensures  !hasParent ==> !updateParent
+        ensures  updateParent ==> node.Contents + newNode.Contents == old(node.Contents) + {x}
+        ensures  !updateParent ==> newNode.Contents == old(node.Contents) + {x}  
+        decreases node.height
     {
         newNode := new BPTNode.Init();
         updateParent := false;
-        // // node is leaf == no more recursion
+        // node is leaf == no more recursion
         if node.isLeaf {
             assert node.Valid(); 
             // node.keyNum < ORDER == there is place for new key in the leaf
@@ -391,15 +385,13 @@ class BPTree {
                 node.InsertAtLeaf(x);
                 newNode := node;
                 updateParent := false;
-
                 assert newNode.Valid();
                 assert node.Valid();
                 assert node.ContainsVal(x) || newNode.ContainsVal(x);
                 assert newNode == node; 
                 assert newNode == node ==> (newNode == node || fresh(newNode));
                 assert newNode == node || fresh(newNode);
-
-                return;
+                return; // THIS RETURN PATH IS VERIFIED
             } 
 
             // not enough space in the leaf ==> splitting the leaf
@@ -410,21 +402,17 @@ class BPTree {
                 // creates new root at height +1
                 newNode := CreateNewParent(node, splitNode);
                 updateParent  := false; 
-
                 assert newNode.Valid();
                 assert node.Valid();
-                // assert node.ContainsVal(x) || newNode.ContainsVal(x);
-                // assert newNode == node || fresh(newNode);
-
-                return;  
+                return;  // THIS RETURN PATH IS VERIFIED
             }  
             // if not, we need to update parent node
             updateParent := true;
             newNode := splitNode;
-            return;
+            return; // THIS RETURN PATH IS VERIFIED
         } 
-
-        // // node is not leaf 
+        
+        // node is not leaf 
         // if !node.isLeaf {
         assert node.isLeaf == false;
         var innerUpdateParent := false;
@@ -433,34 +421,30 @@ class BPTree {
         // COMMENT: recursive call prolongs the verification (but next two lines and everything before verifies in less than 70 seconds)
         var idx := GetInsertIndex(node.keys, node.keyNum, x); // node.GetInsertIndex(x);
         innerNewNode, innerUpdateParent := InsertHelper(node.children[idx], true, x);
-        // // if innerUpdateParent && node.keyNum == ORDER {
-        // if !innerUpdateParent {
-        //     node.Contents := {};
-        //     node.Repr := {node} + {node.children} + {node.keys};
-        //     for i:= 0 to node.keyNum+1 {
-        //         node.Contents := node.Contents + node.children[i].Contents;
-        //         node.Repr := node.Repr + node.children[i].Repr;
-        //     }
-        //     newNode := node;
-        //     updateParent := false;
-        //     return;
-        // }
-        
-        // if node.keyNum < ORDER {
-        //     InsertInNode(node, innerNewNode);
-        //     newNode := node; // TODO check that is note erasing 
-        //     updateParent := false;
-        //     return; 
-        // } 
-        // newNode := SplitNode(node, newNode);
-        // updateParent := true;
-        // return;
-        // }
+        // if innerUpdateParent && node.keyNum == ORDER {
+        if !innerUpdateParent {
+            node.Contents := {};
+            node.Repr := {node} + {node.children} + {node.keys};
+            for i:= 0 to node.keyNum+1 {
+                node.Contents := node.Contents + node.children[i].Contents;
+                node.Repr := node.Repr + node.children[i].Repr;
+            } 
+            newNode := node;
+            updateParent := false;
+            return;
+        }
+        if node.keyNum < ORDER {
+            InsertInNode(node, innerNewNode);
+            newNode := node;
+            updateParent := false;
+            return; 
+        } 
+        newNode := SplitNode(node, newNode);
+        updateParent := true;
+        return;
     }
 
-
-
-    // COMMENT : Whole find function verifies
+    // Fully verified 
     method Find(val: int) returns (inTree: bool)
         requires Valid()
         ensures root == null ==> inTree == false
@@ -472,7 +456,7 @@ class BPTree {
     }
      
 
-    // COMMENT: verified successfully now
+    // Fully verified 
     method FindHelper(node: BPTNode, val: int) returns (inTree: bool) // verifies correct in under 100 seconds
         requires node.Valid()
         ensures node.ContainsVal(val) <==> inTree
@@ -541,45 +525,23 @@ class BPTree {
     }
 
     
- /*   method Main()
+ /*   
+    method Main()
         modifies this, Repr
     {
         // Create a new BPTree instance
         var tree := new BPTree.Init();
     
         // Insert a value into the tree
-        tree.Insert1(42);
+        tree.Insert(42);
 
         // Verify that the value is in the Contents
         assert 42 in tree.Contents;
-
+        var inTree := tree.Find(42);
+        assert inTree;
         print("Test passed: Value 42 added to the root.");
 
     } */
-
-
-    // TODO I was trying to reproduce our example where this !in root.Repr solved the problem with verifying newRoot.Valid(), but I could not reproduce it
-    method experiment()
-        modifies this, Repr
-    {
-        root := new BPTNode.Init();
-        Repr := root.Repr + {this};
-        Contents := root.Contents;
-        
-        assert root.Valid(); 
-        // assert Valid();
-        // assert this !in root.Repr;
-
-        var newNode : BPTNode? := new BPTNode.Init();
-        assert root.Valid();
-        newNode := root;
-        assert newNode.Valid();
-
-        root := null;
-        // assert this !in newNode.Repr;
-        assert newNode.Valid();
-
-    }
 
     ghost predicate HalfKeys()
         reads this, root, Repr
@@ -602,12 +564,11 @@ class BPTree {
         // all keys in Content are in the Leaves List contents
         (forall key :: key in Contents ==>  key in root.SumOfChildContents(LeavesList))
     }    
- // TODO see if possible to reduce
- // TODO maybe root.Repr == Repr (depends if we put this in Repr)
+
     ghost predicate Valid()
-    reads *
+        reads this, Repr
     {   
-        this in Repr &&
+        this in Repr && 
         (root == null ==> Contents == {}) && 
         (root != null ==> 
             root in Repr && root.Repr <= Repr && 
