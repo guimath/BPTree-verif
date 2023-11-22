@@ -57,40 +57,6 @@ class BPTNode {
         )) 
     }
 
-          //  && (forall val: int :: val in Contents ==> (exists j: int :: 0 <= j <= keyNum && val in children[j].Contents))))
-    ghost predicate ValidBeforeContentUpdate()
-        reads this, children, keys, Repr
-        decreases height
-        // ensures Valid() ==> this in Repr
-    {
-        this in Repr && 
-        height >= -1 &&
-        LengthOk() &&
-        children in Repr &&
-        ( keyNum == 0 ==> Empty() ) &&
-        KeyNumOK()&&
-        Sorted()&&
-        LeavesHeightEq() && 
-        (isLeaf==false ==> (
-            nextLeaf == null &&
-            ChildrenInRepr() &&
-            ChildNum() &&
-            ChildHeightEq() &&
-            Hierarchy() &&
-            NonCyclical() &&
-            ChildrenContentsDisjoint() &&
-            (forall i: int :: 0 <= i < keyNum+1 ==> ( 
-                children[i].keys in Repr && 
-                children[i].children in Repr && 
-                children[i].Valid() && 
-                children[i].Contents <= Contents)
-            ) && 
-            (keyNum > 0 ==> (
-                Contents == SumOfChildContents(children[0..keyNum+1]) && 
-                (forall num: int :: (num in Contents ==> num in SumOfChildContents(children[0..keyNum+1])))
-            ))
-        )) 
-    }
     // ************************************************ //
     // ************** ORDERED PREDICATES ************** //
     // ************************************************ //
@@ -388,25 +354,6 @@ class BPTNode {
         assert Valid();
     }
     
-    lemma ContentsEqualsKeys() 
-        requires LengthOk()
-        requires Sorted()
-        requires isLeaf
-        // ensures |Contents| == keyNum
-    {
-        var seq_contents : seq<int> := [];
-        var set_contents : set<int> := {};
-        for i := 0 to keyNum 
-            invariant 0 <= i <= keyNum
-            invariant forall j :: 0 <= j < i ==> ( keys[j] in seq_contents && keys[j] in set_contents )
-        {
-            seq_contents := seq_contents + [keys[i]];
-            set_contents := set_contents + {keys[i]};
-            // assert |set_contents| ==  i + 1;
-        }
-
-    }
-
     constructor Init()
         ensures children.Length == ORDER + 1
         ensures keys.Length == ORDER
