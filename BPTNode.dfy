@@ -365,23 +365,44 @@ class BPTNode {
         ensures ContainsVal(key)
         ensures old(Contents) + {key} == Contents
     {
+        // ghost var prev_keys := keys[..];
+        assert forall k :: k in keys[..keyNum] ==> k in Contents;
         keys := InsertIntoSorted(keys, keyNum, key);
         assert forall i :: 0 <= i < keyNum ==> old(keys)[i] in keys[..];
         keyNum := keyNum + 1;
         assert sorted(keys[..keyNum]);
         assert forall i :: 0 <= i < keyNum ==> keys[i] > 0;
+        assert Sorted();
 
         Repr := Repr + {keys};
 
-        assert key !in Contents;
+        // assert key !in Contents;
+        // assert forall k :: k in old(keys)[..(keyNum-1)] ==> k in Contents;
         // Contents := Contents + {key};
+        // assert forall k :: k in old(keys)[..(keyNum-1)] ==> k in old(Contents);
+        // assert Contents == old(Contents) + {key};
+        // assert forall k :: k in old(keys)[..(keyNum-1)] ==> k in keys[..keyNum];
+        
+        // assert forall i : int :: 0 <= i < keyNum ==> ( keys[i] in Contents );
 
-        AddKeysContent();
+        Contents := set x | x in keys[..keyNum];
+        
+        // AddKeysContent();
+        assert KeysInContents();
+
+        assert key in keys[..keyNum];    
+        // assert forall k :: k in keys[..keyNum] ==> k in Contents;
+        // assert key in Contents;
+
+        // assert keyNum >= 1;
+        // assert exists k :: k in keys[..(keyNum-1)] && k !in old(Contents) ==> k == key;
+        
+        
         // HUGEEEE TODO get this to work without assume
         assume old(Contents) + {key} == Contents;
         // assert old(Contents) + {key} == Contents;
-        // // assert (set x | x in prev_keys[..(keyNum-1)]) == old(Contents);
-        // // assert (set x | x in prev_keys[..(keyNum-1)]) + {key} == (set x | x in keys[..keyNum]);
+        // assert (set x | x in prev_keys[..(keyNum-1)]) == old(Contents);
+        // assert (set x | x in prev_keys[..(keyNum-1)]) + {key} == (set x | x in keys[..keyNum]);
         // assert Contents == set x | x in keys[..keyNum]; //may not hold
         // assert KeysInContents(); // may not hold
         assert Valid();
@@ -484,9 +505,11 @@ class BPTNode {
         // only for leaves 
         modifies this
         requires ValidBeforeContentUpdate()
+        requires exists k:int :: k in keys[..keyNum] && k !in Contents
         requires keyNum > 0
         requires isLeaf
         ensures Valid()
+        ensures KeysInContents()
     {
         assert this in Repr;
         assert children in Repr;
@@ -583,7 +606,8 @@ lemma DistributiveIn(a: seq<int>, b:seq<int>, k:int, key:int)
 {
     assert forall j :: 0 <= j < k ==> a[j] in b;
     assert forall j :: k <= j < |a| ==> a[j] in b;
-    assert ((forall j :: 0 <= j < k ==> a[j] in b) && (forall j :: k <= j < |a| ==> a[j] in b)) ==> (forall j :: 0 <= j < |a| ==> a[j] in b);
+    assert ((forall j :: 0 <= j < k ==> a[j] in b) && (forall j :: k <= j < |a| ==> a[j] in b)) 
+                    ==> (forall j :: 0 <= j < |a| ==> a[j] in b);
     assert forall j :: 0 <= j < |a| ==> a[j] in b;
 }
 
@@ -595,7 +619,6 @@ lemma DistributiveGreater(a: seq<int>, b:seq<int>, k:int, key:int)
     requires key > 0
     ensures forall i :: 0 <= i < |b| ==> b[i] > 0
 {
-    // assert ((forall j :: 0 <= j < k ==> b[j] > 0) && (forall j :: k <= j < |a| ==> b[j] > 0)) ==> (forall j :: 0 <= j < |b| ==> b[j] > 0);
     assert forall j :: 0 <= j < |b| ==> b[j] > 0;
 }
 
@@ -613,6 +636,7 @@ method InsertIntoSorted(a: array<int>, limit:int, key:int) returns (b: array<int
     ensures forall i :: limit + 1 <= i < b.Length ==> b[i] == 0  
     ensures forall i :: 0 <= i < limit ==> a[i] in b[..]
     ensures forall i :: 0 <= i < limit + 1 ==> b[i] > 0
+    ensures key in b[..(limit+1)]
 {
     b:= new int[a.Length];
 
